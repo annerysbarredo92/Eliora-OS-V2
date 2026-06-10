@@ -3,6 +3,7 @@ import { cn } from '@/utils/cn'
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   hover?: boolean
+  glass?: boolean
   padding?: 'sm' | 'md' | 'lg' | 'none'
 }
 
@@ -13,14 +14,17 @@ const paddings = {
   lg:   'p-8',
 }
 
-export function Card({ hover = false, padding = 'md', className, children, ...props }: CardProps) {
+export function Card({ hover = false, glass = false, padding = 'md', className, children, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        'bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)]',
-        'shadow-[var(--shadow-sm)]',
+        glass
+          ? 'bg-[var(--surface)] backdrop-blur-[22px] saturate-150'
+          : 'bg-[var(--surface-solid)]',
+        'border border-[var(--hairline)] rounded-[var(--radius)]',
+        'shadow-[var(--shadow-glass)]',
         paddings[padding],
-        hover && 'transition-shadow duration-[var(--duration)] hover:shadow-[var(--shadow)] cursor-pointer',
+        hover && 'transition-transform duration-200 hover:-translate-y-0.5 cursor-pointer',
         className
       )}
       {...props}

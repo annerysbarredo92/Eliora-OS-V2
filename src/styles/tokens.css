@@ -1,56 +1,62 @@
 /* ============================================================
-   ELIORA OS — DESIGN TOKENS
-   Source of truth for all visual decisions.
-   Premium · Refined · Calm · Strategic
+   ELIORA OS — DESIGN TOKENS  (Amethyst & Gold)
 ============================================================ */
 
 :root {
-  /* ── Brand — Deep Plum / Lavender System ──────────────── */
-  --brand-900: #0F0A1E;
-  --brand-800: #1A0F35;
-  --brand-700: #231442;   /* Ink Plum — sidebar, loaders */
-  --brand-600: #3D2060;
-  --brand-500: #6B4A7D;   /* Primary interactive */
-  --brand-400: #7D5A90;   /* Hover state */
-  --brand-300: #9467B5;   /* Light Plum */
-  --brand-200: #C09BD9;   /* Lavender accent */
-  --brand-100: #E3D5EE;   /* Tint sub */
-  --brand-50:  #F0EBF7;   /* Faint bg */
-  --brand-25:  #F8F4FC;   /* Ultra faint */
+  /* ── Palette ─────────────────────────────────────────── */
+  --bg:           #F4F2FB;
+  --bg-warm:      #FBEEF2;
+  --bg-cool:      #ECE9FB;
+  --surface:      rgba(255,255,255,0.72);
+  --surface-2:    rgba(255,255,255,0.55);
+  --surface-solid:#FFFFFF;
 
-  /* ── Accent — Lavender ───────────────────────────────── */
-  --accent:     #A775C9;
-  --accent-lt:  #C09BD9;
-  --accent-dk:  #7C52A8;
-  --accent-bg:  #F5EFF9;
-  --accent-sub: #E8D9F5;
+  --ink:          #1A1430;
+  --ink-2:        #4B4566;
+  --muted:        #8E89A6;
+  --hairline:     rgba(26,20,48,0.10);
+  --hairline-2:   rgba(26,20,48,0.06);
+
+  --violet:       #6D3DE6;
+  --violet-600:   #5C2ED1;
+  --violet-700:   #4A23B0;
+  --lavender:     #B79CEF;
+  --lavender-soft:#ECE6FB;
+  --iris:         #9258EE;
+  --lilac:        #C2A6F0;
+  --gold:         #F2CE5B;
+  --rose:         #E86FB0;
 
   /* ── Semantic ────────────────────────────────────────── */
-  --success:    #16A34A;
-  --success-bg: #F0FDF4;
-  --warning:    #D97706;
-  --warning-bg: #FFFBEB;
-  --danger:     #DC2626;
-  --danger-bg:  #FEF2F2;
-  --info:       #2563EB;
-  --info-bg:    #EFF6FF;
+  --success:    #34BF93;
+  --success-bg: #EDFAF5;
+  --warning:    #E0A23A;
+  --warning-bg: #FEF8ED;
+  --danger:     #E8617A;
+  --danger-bg:  #FEF0F3;
+  --info:       #9258EE;
+  --info-bg:    #F3EDFD;
 
-  /* ── Neutrals ─────────────────────────────────────────── */
-  --ink:   #1A1625;
-  --ink-2: #2D2640;
-  --ink-3: #5C5470;
-  --ink-4: #8B8399;
-  --ink-5: #B8B2C4;
+  /* ── Gradients ───────────────────────────────────────── */
+  --irid: linear-gradient(105deg,#6D3DE6 0%,#9258EE 26%,#C2A6F0 50%,#EBD9B0 72%,#F2CE5B 100%);
+  --irid-soft: linear-gradient(105deg,#9173f0 0%,#b48ff2 30%,#d8c6f4 54%,#f1e7cf 74%,#f6dd86 100%);
 
-  --surface:   #FFFFFF;
-  --surface-2: #F8F4FC;
-  --surface-3: #F0EBF7;
-  --border:    #E8E0F0;
-  --border-2:  #D5CAE8;
+  /* ── Shadows ─────────────────────────────────────────── */
+  --shadow-glass: 0 24px 60px -24px rgba(76,53,190,0.42), 0 2px 8px rgba(76,53,190,0.08);
+  --shadow-sm:    0 1px 3px rgba(26,20,48,0.08);
+  --shadow:       0 4px 14px rgba(76,53,190,0.12);
+  --shadow-md:    0 8px 24px rgba(76,53,190,0.14);
+  --shadow-lg:    0 16px 40px rgba(76,53,190,0.16);
+
+  /* ── Radii ───────────────────────────────────────────── */
+  --radius-sm:   14px;
+  --radius:      22px;
+  --radius-lg:   30px;
+  --radius-full: 9999px;
 
   /* ── Typography ──────────────────────────────────────── */
-  --font-serif: 'Cormorant Garamond', Georgia, serif;
-  --font-sans:  'DM Sans', system-ui, sans-serif;
+  --font-sans:  'Hanken Grotesk', system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
 
   --text-xs:   0.6875rem;  /* 11px */
   --text-sm:   0.8125rem;  /* 13px */
@@ -77,33 +83,34 @@
   --space-20: 5rem;
   --space-24: 6rem;
 
-  /* ── Radii ───────────────────────────────────────────── */
-  --radius-sm: 6px;
-  --radius:    10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 28px;
-  --radius-full: 9999px;
-
-  /* ── Shadows ─────────────────────────────────────────── */
-  --shadow-sm: 0 1px 3px rgba(35, 20, 66, 0.08);
-  --shadow:    0 4px 14px rgba(35, 20, 66, 0.10);
-  --shadow-md: 0 8px 24px rgba(35, 20, 66, 0.12);
-  --shadow-lg: 0 16px 40px rgba(35, 20, 66, 0.14);
-  --shadow-xl: 0 24px 60px rgba(35, 20, 66, 0.18);
-
   /* ── Layout ──────────────────────────────────────────── */
-  --sidebar-width:       232px;
-  --sidebar-collapsed:   64px;
-  --header-height:       60px;
-  --content-max:         1280px;
-  --portal-content-max:  860px;
+  --sidebar-width:      232px;
+  --sidebar-collapsed:  64px;
+  --header-height:      60px;
+  --content-max:        1180px;
+  --portal-content-max: 860px;
 
   /* ── Transitions ─────────────────────────────────────── */
-  --ease:      cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-out:  cubic-bezier(0, 0, 0.2, 1);
-  --ease-in:   cubic-bezier(0.4, 0, 1, 1);
-  --duration-fast:   120ms;
-  --duration:        200ms;
-  --duration-slow:   350ms;
+  --ease:          cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:      cubic-bezier(0, 0, 0.2, 1);
+  --ease-in:       cubic-bezier(0.4, 0, 1, 1);
+  --duration-fast: 120ms;
+  --duration:      200ms;
+  --duration-slow: 350ms;
+}
+
+/* ── Dark panel context (sidebar, brand panel) ─────────── */
+[data-theme="dark"] {
+  --bg:           #0B0913;
+  --bg-warm:      #170f1f;
+  --bg-cool:      #0e0c1c;
+  --surface:      rgba(255,255,255,0.055);
+  --surface-solid:#16121f;
+  --ink:          #F3F1FA;
+  --ink-2:        #C3BDD8;
+  --muted:        #8782A2;
+  --hairline:     rgba(255,255,255,0.12);
+  --hairline-2:   rgba(255,255,255,0.06);
+  --lavender-soft:rgba(181,166,247,0.16);
+  --shadow-glass: 0 30px 70px -28px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
 }

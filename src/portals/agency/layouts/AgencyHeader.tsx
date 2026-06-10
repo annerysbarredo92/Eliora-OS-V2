@@ -29,9 +29,10 @@ export function AgencyHeader() {
         right: 0,
         left: 'var(--sidebar-width)',
         height: 'var(--header-height)',
-        background: 'rgba(255,255,255,0.9)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid var(--border)',
+        background: 'rgba(244,242,251,0.85)',
+        backdropFilter: 'blur(20px) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
+        borderBottom: '1px solid var(--hairline-2)',
         display: 'flex',
         alignItems: 'center',
         padding: '0 var(--space-8)',
@@ -39,25 +40,12 @@ export function AgencyHeader() {
         zIndex: 40,
       }}
     >
-      <h1
-        style={{
-          fontSize: 'var(--text-base)',
-          fontWeight: 500,
-          color: 'var(--ink)',
-          letterSpacing: '-0.01em',
-        }}
-      >
+      <h1 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
         {title}
       </h1>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-        <span
-          style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--ink-5)',
-            letterSpacing: '0.04em',
-          }}
-        >
+        <span style={{ fontSize: '13px', color: 'var(--muted)', letterSpacing: '0.01em' }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
         </span>
       </div>

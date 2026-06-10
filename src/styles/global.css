@@ -1,6 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Instrument+Serif:ital@0;1&display=swap');
 @import './tokens.css';
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
-
 @import "tailwindcss";
 
 *, *::before, *::after {
@@ -14,14 +13,15 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
 }
 
 body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
   color: var(--ink);
-  background: var(--surface);
-  line-height: 1.6;
+  background: var(--bg);
+  line-height: 1.55;
   overflow-x: hidden;
 }
 
@@ -35,44 +35,58 @@ body {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--brand-100);
+  background: var(--lavender);
   border-radius: var(--radius-full);
 }
-::-webkit-scrollbar-thumb:hover { background: var(--brand-200); }
+::-webkit-scrollbar-thumb:hover { background: var(--iris); }
 
 /* ── Focus ──────────────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid var(--brand-500);
+  outline: 2px solid var(--violet);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
 
 /* ── Selection ──────────────────────────────────────────── */
 ::selection {
-  background: var(--accent-sub);
-  color: var(--brand-700);
+  background: var(--lavender-soft);
+  color: var(--violet-700);
 }
 
 /* ── Typography helpers ─────────────────────────────────── */
-.font-serif { font-family: var(--font-serif); }
-.font-sans  { font-family: var(--font-sans); }
+.font-serif   { font-family: var(--font-serif); font-weight: 400; }
+.font-serif-i { font-family: var(--font-serif); font-style: italic; font-weight: 400; }
+
+/* ── Atmosphere orbs (reusable) ──────────────────────────── */
+.atmos { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.orb   { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .55; }
+.orb.a { width: 520px; height: 520px; background: radial-gradient(circle,#b9a6ff,transparent 68%); top: -160px; left: -120px; }
+.orb.b { width: 480px; height: 480px; background: radial-gradient(circle,#edc8f2,transparent 68%); top: 6%; right: -160px; opacity: .42; }
+.orb.c { width: 560px; height: 560px; background: radial-gradient(circle,#f0dca0,transparent 70%); bottom: -200px; left: 30%; opacity: .34; }
+
+/* ── Glass material ─────────────────────────────────────── */
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  box-shadow: var(--shadow-glass);
+}
 
 /* ── Utility animations ─────────────────────────────────── */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.96); }
   to   { opacity: 1; transform: scale(1); }
 }
-
 @keyframes slide-in-left {
   from { opacity: 0; transform: translateX(-16px); }
   to   { opacity: 1; transform: translateX(0); }

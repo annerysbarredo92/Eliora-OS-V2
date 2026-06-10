@@ -4,7 +4,7 @@ import { AgencyHeader }  from '@/portals/agency/layouts/AgencyHeader'
 
 export function AgencyLayout() {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--surface-2)' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
       <AgencySidebar />
       <div
         style={{

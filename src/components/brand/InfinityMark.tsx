@@ -1,159 +1,153 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
+
+const PATH = 'M160,100 C118,42 60,44 60,100 C60,156 118,158 160,100 C202,42 260,44 260,100 C260,156 202,158 160,100 Z'
 
 interface InfinityMarkProps {
   size?: number
-  variant?: 'light' | 'dark' | 'gradient'
-  animated?: boolean
+  draw?: boolean
   className?: string
 }
 
-export function InfinityMark({
-  size = 64,
-  variant = 'gradient',
-  animated = true,
-  className = '',
-}: InfinityMarkProps) {
-  const pathRef = useRef<SVGPathElement>(null)
-  const glowRef = useRef<SVGPathElement>(null)
+export function InfinityMark({ size = 64, draw = false, className = '' }: InfinityMarkProps) {
+  const uid     = useId().replace(/:/g, '')
+  const gradId  = `${uid}g`
+  const hiId    = `${uid}h`
+  const filtId  = `${uid}f`
+  const coreRef = useRef<SVGPathElement>(null)
+  const hiRef   = useRef<SVGPathElement>(null)
+  const trRef   = useRef<SVGPathElement>(null)
+  const glassRef = useRef<SVGPathElement>(null)
 
   useEffect(() => {
-    if (!animated) return
-    const path = pathRef.current as SVGPathElement
-    const glow = glowRef.current as SVGPathElement
-    if (!path || !glow) return
+    const core  = coreRef.current
+    const hi    = hiRef.current
+    const tr    = trRef.current
+    const glass = glassRef.current
+    if (!core || !hi || !tr || !glass) return
 
-    const len = path.getTotalLength()
-    path.style.strokeDasharray  = `${len}`
-    path.style.strokeDashoffset = `${len}`
-    glow.style.strokeDasharray  = `${len * 0.25}`
-    glow.style.strokeDashoffset = `${len}`
+    const L   = core.getTotalLength()
+    const seg = 46
 
-    let raf: number
-    let start: number | null = null
-    const DURATION = 3200
-
-    function tick(ts: number) {
-      if (!start) start = ts
-      const elapsed = (ts - start) % DURATION
-      const pct = elapsed / DURATION
-
-      // Main stroke: draws in fully then stays
-      const drawPct = Math.min(pct * 2, 1)
-      path.style.strokeDashoffset = `${len * (1 - drawPct)}`
-
-      // Glow streak: travels the full path continuously
-      const glowOffset = len - (pct * len * 1.25) % len
-      glow.style.strokeDashoffset = `${glowOffset}`
-
-      raf = requestAnimationFrame(tick)
+    function startTravel() {
+      if (!tr) return
+      tr.style.strokeDasharray  = `${seg} ${L}`
+      tr.style.opacity          = '1'
+      tr.animate(
+        [{ strokeDashoffset: '0' }, { strokeDashoffset: `${-(L + seg)}` }],
+        { duration: 3400, iterations: Infinity, easing: 'linear' }
+      )
     }
 
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [animated])
+    if (draw) {
+      core.style.strokeDasharray  = `${L}`
+      core.style.strokeDashoffset = `${L}`
+      hi.style.strokeDasharray    = `${L}`
+      hi.style.strokeDashoffset   = `${L}`
+      glass.style.opacity         = '0'
+      tr.style.opacity            = '0'
 
-  const w = size * 2.4
+      const a = core.animate(
+        [{ strokeDashoffset: `${L}` }, { strokeDashoffset: '0' }],
+        { duration: 2000, easing: 'cubic-bezier(.65,0,.2,1)', fill: 'forwards' }
+      )
+      hi.animate(
+        [{ strokeDashoffset: `${L}` }, { strokeDashoffset: '0' }],
+        { duration: 2000, easing: 'cubic-bezier(.65,0,.2,1)', fill: 'forwards' }
+      )
+      glass.animate(
+        [{ opacity: '0' }, { opacity: '1' }],
+        { duration: 1400, delay: 400, fill: 'forwards' }
+      )
+      a.onfinish = startTravel
+    } else {
+      startTravel()
+    }
+  }, [draw])
+
+  const w = Math.round(size * 1.6)
   const h = size
-
-  const strokeColor = variant === 'light'
-    ? 'rgba(255,255,255,0.9)'
-    : variant === 'dark'
-    ? 'var(--brand-600)'
-    : 'url(#infinityGradient)'
-
-  const glowColor = variant === 'light'
-    ? 'rgba(255,255,255,1)'
-    : 'rgba(192,155,217,1)'
 
   return (
     <svg
       width={w}
       height={h}
-      viewBox={`0 0 ${w} ${h}`}
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 320 200"
+      style={{ width: w, height: h, overflow: 'visible' }}
+      aria-label="Eliora"
       className={className}
-      aria-hidden="true"
     >
       <defs>
-        <linearGradient id="infinityGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%"   stopColor="var(--brand-300)" />
-          <stop offset="50%"  stopColor="var(--accent)" />
-          <stop offset="100%" stopColor="var(--brand-200)" />
+        <linearGradient id={gradId} x1="-60" y1="0" x2="380" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0"    stopColor="#6D3DE6" />
+          <stop offset="0.26" stopColor="#9258EE" />
+          <stop offset="0.5"  stopColor="#C2A6F0" />
+          <stop offset="0.68" stopColor="#EBD9B0" />
+          <stop offset="0.82" stopColor="#F2CE5B" />
+          <stop offset="0.93" stopColor="#CBB6E6" />
+          <stop offset="1"    stopColor="#6D3DE6" />
+          <animateTransform
+            attributeName="gradientTransform"
+            type="translate"
+            from="-120 0"
+            to="120 0"
+            dur="6s"
+            repeatCount="indefinite"
+            additive="sum"
+          />
         </linearGradient>
-
-        <filter id="infinityGlow" x="-20%" y="-60%" width="140%" height="220%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
+        <linearGradient id={hiId} x1="0" y1="0" x2="0" y2="200" gradientUnits="userSpaceOnUse">
+          <stop offset="0"   stopColor="#fff" stopOpacity="0.95" />
+          <stop offset="0.5" stopColor="#fff" stopOpacity="0.08" />
+          <stop offset="1"   stopColor="#fff" stopOpacity="0.45" />
+        </linearGradient>
+        <filter id={filtId} x="-30%" y="-60%" width="160%" height="220%">
+          <feGaussianBlur stdDeviation="7" result="b" />
           <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-
-        <filter id="glowStreak" x="-40%" y="-100%" width="180%" height="300%">
-          <feGaussianBlur stdDeviation="4" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
+            <feMergeNode in="b" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
       </defs>
 
-      {/* Subtle track */}
+      {/* frosted glass body */}
       <path
-        d={`M ${w * 0.5} ${h * 0.5}
-            C ${w * 0.5} ${h * 0.08}, ${w * 0.72} ${h * 0.08}, ${w * 0.75} ${h * 0.5}
-            C ${w * 0.78} ${h * 0.92}, ${w * 1.0} ${h * 0.92}, ${w * 1.0} ${h * 0.5}
-            C ${w * 1.0} ${h * 0.08}, ${w * 0.78} ${h * 0.08}, ${w * 0.75} ${h * 0.5}
-            C ${w * 0.72} ${h * 0.92}, ${w * 0.5} ${h * 0.92}, ${w * 0.5} ${h * 0.5}
-            C ${w * 0.5} ${h * 0.08}, ${w * 0.28} ${h * 0.08}, ${w * 0.25} ${h * 0.5}
-            C ${w * 0.22} ${h * 0.92}, ${w * 0.0} ${h * 0.92}, ${w * 0.0} ${h * 0.5}
-            C ${w * 0.0} ${h * 0.08}, ${w * 0.22} ${h * 0.08}, ${w * 0.25} ${h * 0.5}
-            C ${w * 0.28} ${h * 0.92}, ${w * 0.5} ${h * 0.92}, ${w * 0.5} ${h * 0.5}`}
-        stroke={variant === 'light' ? 'rgba(255,255,255,0.1)' : 'var(--brand-100)'}
-        strokeWidth="1.5"
+        ref={glassRef}
+        d={PATH}
+        fill="none"
+        stroke="rgba(255,255,255,0.5)"
+        strokeWidth="40"
         strokeLinecap="round"
       />
-
-      {/* Main animated stroke */}
+      {/* iridescent core with blur glow */}
       <path
-        ref={pathRef}
-        d={`M ${w * 0.5} ${h * 0.5}
-            C ${w * 0.5} ${h * 0.08}, ${w * 0.72} ${h * 0.08}, ${w * 0.75} ${h * 0.5}
-            C ${w * 0.78} ${h * 0.92}, ${w * 1.0} ${h * 0.92}, ${w * 1.0} ${h * 0.5}
-            C ${w * 1.0} ${h * 0.08}, ${w * 0.78} ${h * 0.08}, ${w * 0.75} ${h * 0.5}
-            C ${w * 0.72} ${h * 0.92}, ${w * 0.5} ${h * 0.92}, ${w * 0.5} ${h * 0.5}
-            C ${w * 0.5} ${h * 0.08}, ${w * 0.28} ${h * 0.08}, ${w * 0.25} ${h * 0.5}
-            C ${w * 0.22} ${h * 0.92}, ${w * 0.0} ${h * 0.92}, ${w * 0.0} ${h * 0.5}
-            C ${w * 0.0} ${h * 0.08}, ${w * 0.22} ${h * 0.08}, ${w * 0.25} ${h * 0.5}
-            C ${w * 0.28} ${h * 0.92}, ${w * 0.5} ${h * 0.92}, ${w * 0.5} ${h * 0.5}`}
-        stroke={strokeColor}
-        strokeWidth="2.5"
+        ref={coreRef}
+        d={PATH}
+        fill="none"
+        stroke={`url(#${gradId})`}
+        strokeWidth="29"
         strokeLinecap="round"
-        filter="url(#infinityGlow)"
-        style={{ transition: 'none' }}
+        filter={`url(#${filtId})`}
       />
-
-      {/* Travelling glow streak */}
-      {animated && (
-        <path
-          ref={glowRef}
-          d={`M ${w * 0.5} ${h * 0.5}
-              C ${w * 0.5} ${h * 0.08}, ${w * 0.72} ${h * 0.08}, ${w * 0.75} ${h * 0.5}
-              C ${w * 0.78} ${h * 0.92}, ${w * 1.0} ${h * 0.92}, ${w * 1.0} ${h * 0.5}
-              C ${w * 1.0} ${h * 0.08}, ${w * 0.78} ${h * 0.08}, ${w * 0.75} ${h * 0.5}
-              C ${w * 0.72} ${h * 0.92}, ${w * 0.5} ${h * 0.92}, ${w * 0.5} ${h * 0.5}
-              C ${w * 0.5} ${h * 0.08}, ${w * 0.28} ${h * 0.08}, ${w * 0.25} ${h * 0.5}
-              C ${w * 0.22} ${h * 0.92}, ${w * 0.0} ${h * 0.92}, ${w * 0.0} ${h * 0.5}
-              C ${w * 0.0} ${h * 0.08}, ${w * 0.22} ${h * 0.08}, ${w * 0.25} ${h * 0.5}
-              C ${w * 0.28} ${h * 0.92}, ${w * 0.5} ${h * 0.92}, ${w * 0.5} ${h * 0.5}`}
-          stroke={glowColor}
-          strokeWidth="4"
-          strokeLinecap="round"
-          filter="url(#glowStreak)"
-          style={{ transition: 'none' }}
-        />
-      )}
+      {/* specular highlight */}
+      <path
+        ref={hiRef}
+        d={PATH}
+        fill="none"
+        stroke={`url(#${hiId})`}
+        strokeWidth="6"
+        strokeLinecap="round"
+        opacity="0.7"
+      />
+      {/* traveling light */}
+      <path
+        ref={trRef}
+        d={PATH}
+        fill="none"
+        stroke="#fff"
+        strokeWidth="10"
+        strokeLinecap="round"
+        style={{ opacity: 0 }}
+      />
     </svg>
   )
 }

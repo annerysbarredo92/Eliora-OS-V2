@@ -8,20 +8,20 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variants: Record<BadgeVariant, string> = {
-  default: 'bg-[var(--surface-3)] text-[var(--ink-3)]',
+  default: 'bg-[var(--lavender-soft)] text-[var(--ink-2)]',
   success: 'bg-[var(--success-bg)] text-[var(--success)]',
   warning: 'bg-[var(--warning-bg)] text-[var(--warning)]',
   danger:  'bg-[var(--danger-bg)] text-[var(--danger)]',
   info:    'bg-[var(--info-bg)] text-[var(--info)]',
-  brand:   'bg-[var(--brand-50)] text-[var(--brand-500)]',
+  brand:   'bg-[var(--violet)] text-white shadow-[0_6px_14px_-4px_var(--violet)]',
 }
 
 export function Badge({ variant = 'default', className, children, ...props }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2.5 py-0.5 rounded-full',
-        'text-[var(--text-xs)] font-semibold tracking-wide',
+        'inline-flex items-center px-2.5 py-1 rounded-full',
+        'text-[11px] font-bold tracking-[0.08em] uppercase',
         variants[variant],
         className
       )}

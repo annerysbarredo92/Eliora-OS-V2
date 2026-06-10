@@ -7,7 +7,7 @@ export default function App() {
   const [ready, setReady] = useState(false)
 
   if (!ready) {
-    return <AppLoader variant="app" onComplete={() => setReady(true)} />
+    return <AppLoader onComplete={() => setReady(true)} />
   }
 
   return <RouterProvider router={router} />

@@ -4,13 +4,19 @@ export function PublicFooter() {
   return (
     <footer
       style={{
-        background: 'var(--brand-700)',
-        padding: 'var(--space-12) var(--space-10)',
+        background: '#0B0913',
+        padding: 'var(--space-12) 32px',
         marginTop: 'auto',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
+      <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,#6D3DE6,transparent 70%)', opacity: .25, filter: 'blur(80px)', bottom: -120, left: -60, pointerEvents: 'none' }} />
+
       <div
         style={{
+          position: 'relative',
+          zIndex: 1,
           maxWidth: 'var(--content-max)',
           margin: '0 auto',
           display: 'flex',
@@ -18,21 +24,11 @@ export function PublicFooter() {
           alignItems: 'center',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          <InfinityMark size={16} variant="light" animated={false} />
-          <span
-            style={{
-              fontFamily: 'var(--font-serif)',
-              fontSize: 'var(--text-base)',
-              fontWeight: 300,
-              letterSpacing: '0.1em',
-              color: 'rgba(255,255,255,0.6)',
-            }}
-          >
-            Eliora
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <InfinityMark size={18} />
+          <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em', color: '#F3F1FA' }}>Eliora</span>
         </div>
-        <p style={{ fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>
+        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.02em' }}>
           © {new Date().getFullYear()} Eliora OS · Built for premium agencies
         </p>
       </div>

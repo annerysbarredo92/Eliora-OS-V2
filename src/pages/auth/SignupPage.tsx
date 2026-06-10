@@ -42,30 +42,20 @@ export function SignupPage() {
 
   return (
     <div className="animate-fade-up">
-      <div style={{ marginBottom: 'var(--space-8)' }}>
-        <h1
-          style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: 'var(--text-2xl)',
-            fontWeight: 400,
-            color: 'var(--ink)',
-            marginBottom: 'var(--space-2)',
-          }}
-        >
-          Create your workspace
-        </h1>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--ink-4)' }}>
-          Get started with Eliora OS free for 14 days.
-        </p>
-      </div>
+      <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)', marginBottom: 8 }}>
+        Create your workspace
+      </h1>
+      <p style={{ fontSize: 15.5, color: 'var(--ink-2)', marginBottom: 28 }}>
+        Start your 14-day free trial. No credit card required.
+      </p>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
         <Input
           label="Agency name"
           type="text"
           value={agencyName}
           onChange={e => setAgencyName(e.target.value)}
-          placeholder="Your Agency Name"
+          placeholder="Northlight Studio"
           required
           autoFocus
         />
@@ -78,11 +68,11 @@ export function SignupPage() {
           required
         />
         <Input
-          label="Email"
+          label="Work email"
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          placeholder="you@agency.com"
+          placeholder="you@youragency.com"
           required
         />
         <Input
@@ -90,47 +80,36 @@ export function SignupPage() {
           type="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          placeholder="Min 8 characters"
-          hint="At least 8 characters."
+          placeholder="At least 8 characters"
+          hint="Use 8+ characters with a mix of letters and numbers."
           required
           minLength={8}
         />
 
         {error && (
-          <p
-            style={{
-              fontSize: 'var(--text-xs)',
-              color: 'var(--danger)',
-              background: 'var(--danger-bg)',
-              padding: 'var(--space-3)',
-              borderRadius: 'var(--radius)',
-            }}
-          >
+          <div style={{ fontSize: '13px', color: 'var(--danger)', background: 'var(--danger-bg)', padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(232,97,122,0.2)' }}>
             {error}
-          </p>
+          </div>
         )}
 
-        <Button type="submit" variant="primary" size="lg" loading={loading} fullWidth>
+        <Button type="submit" variant="primary" size="lg" loading={loading} fullWidth style={{ marginTop: 4 }}>
           Create workspace
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <path d="M5 12h14M13 6l6 6-6 6"/>
+          </svg>
         </Button>
 
-        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--ink-5)', textAlign: 'center' }}>
-          By signing up, you agree to our Terms of Service and Privacy Policy.
+        <p style={{ fontSize: '12.5px', color: 'var(--muted)', textAlign: 'center', lineHeight: 1.5 }}>
+          By creating a workspace you agree to Eliora's{' '}
+          <Link to="#" style={{ color: 'var(--ink-2)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}>Terms</Link>
+          {' '}and{' '}
+          <Link to="#" style={{ color: 'var(--ink-2)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}>Privacy Policy</Link>.
         </p>
       </form>
 
-      <p
-        style={{
-          marginTop: 'var(--space-6)',
-          textAlign: 'center',
-          fontSize: 'var(--text-sm)',
-          color: 'var(--ink-4)',
-        }}
-      >
+      <p style={{ marginTop: 24, textAlign: 'center', fontSize: '14.5px', color: 'var(--ink-2)' }}>
         Already have an account?{' '}
-        <Link to="/login" style={{ color: 'var(--brand-500)', textDecoration: 'none', fontWeight: 500 }}>
-          Sign in
-        </Link>
+        <Link to="/login" style={{ color: 'var(--violet)', fontWeight: 600, textDecoration: 'none' }}>Sign in</Link>
       </p>
     </div>
   )

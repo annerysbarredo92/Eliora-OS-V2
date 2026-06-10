@@ -13,16 +13,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || label?.toLowerCase().replace(/\s+/g, '-')
 
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-[7px]">
         {label && (
           <label
             htmlFor={inputId}
             style={{
-              fontSize: 'var(--text-xs)',
+              fontSize: '13px',
               fontWeight: 600,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              color: 'var(--ink-3)',
+              color: 'var(--ink-2)',
             }}
           >
             {label}
@@ -32,27 +30,26 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full h-10 px-3.5',
-            'text-[var(--text-sm)] text-[var(--ink)]',
-            'bg-[var(--surface)] border rounded-[var(--radius)]',
-            'transition-colors duration-[var(--duration-fast)]',
-            'placeholder:text-[var(--ink-5)]',
+            'w-full h-[50px] px-[15px]',
+            'font-[var(--font-sans)] text-[15px] text-[var(--ink)]',
+            'bg-[var(--surface-solid)] border rounded-[14px]',
+            'transition-all duration-[200ms]',
+            'placeholder:text-[var(--muted)]',
             error
-              ? 'border-[var(--danger)] focus:outline-[var(--danger)]'
-              : 'border-[var(--border)] focus:border-[var(--brand-500)] focus:outline-[var(--brand-500)]',
+              ? 'border-[var(--danger)] focus:outline-none focus:border-[var(--danger)] focus:shadow-[0_0_0_4px_rgba(232,97,122,0.15)]'
+              : 'border-[var(--hairline)] focus:outline-none focus:border-[var(--violet)] focus:shadow-[0_0_0_4px_var(--lavender-soft)]',
             className
           )}
           {...props}
         />
         {error && (
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--danger)' }}>{error}</p>
+          <p style={{ fontSize: '12px', color: 'var(--danger)' }}>{error}</p>
         )}
         {hint && !error && (
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--ink-4)' }}>{hint}</p>
+          <p style={{ fontSize: '12px', color: 'var(--muted)' }}>{hint}</p>
         )}
       </div>
     )
   }
 )
-
 Input.displayName = 'Input'

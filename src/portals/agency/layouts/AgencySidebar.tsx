@@ -4,19 +4,19 @@ import { signOut } from '@/lib/auth'
 import { useAuth } from '@/hooks/useAuth'
 
 const NAV = [
-  { path: '/agency/dashboard',     label: 'Dashboard',     icon: '⊞' },
-  { path: '/agency/clients',       label: 'Clients',       icon: '◎' },
-  { path: '/agency/content',       label: 'Content',       icon: '✦' },
-  { path: '/agency/calendar',      label: 'Calendar',      icon: '◻' },
-  { path: '/agency/tasks',         label: 'Tasks',         icon: '◈' },
-  { path: '/agency/files',         label: 'Files',         icon: '◧' },
-  { path: '/agency/reports',       label: 'Reports',       icon: '◉' },
-  { path: '/agency/billing',       label: 'Billing',       icon: '◆' },
-  { path: '/agency/pipeline',      label: 'Pipeline',      icon: '◇' },
-  { path: '/agency/operations',    label: 'Operations',    icon: '⬡' },
-  { path: '/agency/team',          label: 'Team',          icon: '◎' },
-  { path: '/agency/notifications', label: 'Notifications', icon: '◉' },
-  { path: '/agency/settings',      label: 'Settings',      icon: '◈' },
+  { path: '/agency/dashboard',     label: 'Dashboard'     },
+  { path: '/agency/clients',       label: 'Clients'       },
+  { path: '/agency/content',       label: 'Content'       },
+  { path: '/agency/calendar',      label: 'Calendar'      },
+  { path: '/agency/tasks',         label: 'Tasks'         },
+  { path: '/agency/files',         label: 'Files'         },
+  { path: '/agency/reports',       label: 'Reports'       },
+  { path: '/agency/billing',       label: 'Billing'       },
+  { path: '/agency/pipeline',      label: 'Pipeline'      },
+  { path: '/agency/operations',    label: 'Operations'    },
+  { path: '/agency/team',          label: 'Team'          },
+  { path: '/agency/notifications', label: 'Notifications' },
+  { path: '/agency/settings',      label: 'Settings'      },
 ]
 
 export function AgencySidebar() {
@@ -36,41 +36,38 @@ export function AgencySidebar() {
         left: 0,
         bottom: 0,
         width: 'var(--sidebar-width)',
-        background: 'var(--brand-700)',
+        background: '#0B0913',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 50,
         overflowY: 'auto',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
       }}
     >
+      {/* atmosphere */}
+      <div style={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle,#6D3DE6,transparent 70%)', opacity: .35, filter: 'blur(70px)', top: -80, left: -60, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle,#F2CE5B,transparent 70%)', opacity: .15, filter: 'blur(70px)', bottom: -60, right: -40, pointerEvents: 'none' }} />
+
       {/* Logo */}
       <div
         style={{
+          position: 'relative',
+          zIndex: 2,
           height: 'var(--header-height)',
           display: 'flex',
           alignItems: 'center',
-          padding: '0 var(--space-5)',
-          gap: 'var(--space-3)',
-          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          padding: '0 20px',
+          gap: 10,
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
           flexShrink: 0,
         }}
       >
-        <InfinityMark size={18} variant="light" animated={false} />
-        <span
-          style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: 'var(--text-base)',
-            fontWeight: 400,
-            letterSpacing: '0.1em',
-            color: 'rgba(255,255,255,0.85)',
-          }}
-        >
-          Eliora
-        </span>
+        <InfinityMark size={18} />
+        <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em', color: '#F3F1FA' }}>Eliora</span>
       </div>
 
       {/* Navigation */}
-      <nav style={{ flex: 1, padding: 'var(--space-4) var(--space-3)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <nav style={{ position: 'relative', zIndex: 2, flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {NAV.map(item => (
           <NavLink
             key={item.path}
@@ -78,18 +75,25 @@ export function AgencySidebar() {
             style={({ isActive }) => ({
               display: 'flex',
               alignItems: 'center',
-              gap: 'var(--space-3)',
-              padding: 'var(--space-2) var(--space-3)',
-              borderRadius: 'var(--radius)',
+              padding: '9px 12px',
+              borderRadius: 12,
               textDecoration: 'none',
-              fontSize: 'var(--text-sm)',
-              fontWeight: 400,
-              color: isActive ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.45)',
-              background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
-              transition: 'all var(--duration-fast) var(--ease)',
+              fontSize: '13.5px',
+              fontWeight: isActive ? 600 : 400,
+              color: isActive ? '#F3F1FA' : 'rgba(255,255,255,0.45)',
+              background: isActive ? 'rgba(109,61,230,0.25)' : 'transparent',
+              transition: 'all 120ms ease',
+              letterSpacing: '-0.01em',
             })}
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLElement
+              if (!el.getAttribute('aria-current')) el.style.color = 'rgba(255,255,255,0.75)'
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLElement
+              if (!el.getAttribute('aria-current')) el.style.color = 'rgba(255,255,255,0.45)'
+            }}
           >
-            <span style={{ fontSize: '13px', opacity: 0.7 }}>{item.icon}</span>
             {item.label}
           </NavLink>
         ))}
@@ -98,30 +102,25 @@ export function AgencySidebar() {
       {/* User / sign out */}
       <div
         style={{
-          padding: 'var(--space-4)',
-          borderTop: '1px solid rgba(255,255,255,0.07)',
+          position: 'relative',
+          zIndex: 2,
+          padding: '16px',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
           flexShrink: 0,
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-3)',
-            marginBottom: 'var(--space-3)',
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <div
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--brand-500)',
+              width: 34,
+              height: 34,
+              borderRadius: '50%',
+              background: 'linear-gradient(105deg,#6D3DE6,#9258EE)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '11px',
-              fontWeight: 600,
+              fontSize: '12px',
+              fontWeight: 700,
               color: 'white',
               flexShrink: 0,
             }}
@@ -129,45 +128,28 @@ export function AgencySidebar() {
             {profile?.avatar_initials || '?'}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 'var(--text-xs)',
-                fontWeight: 500,
-                color: 'rgba(255,255,255,0.8)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {profile?.display_name || 'User'}
             </div>
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'rgba(255,255,255,0.35)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <div style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.35)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {profile?.role?.replace('_', ' ')}
             </div>
           </div>
         </div>
-
         <button
           onClick={handleSignOut}
           style={{
             width: '100%',
-            padding: 'var(--space-2) var(--space-3)',
-            borderRadius: 'var(--radius)',
+            padding: '8px 12px',
+            borderRadius: 10,
             background: 'transparent',
             border: 'none',
             color: 'rgba(255,255,255,0.35)',
-            fontSize: 'var(--text-xs)',
+            fontSize: '13px',
             cursor: 'pointer',
             textAlign: 'left',
-            transition: 'color var(--duration-fast) var(--ease)',
+            transition: 'color 120ms ease',
+            fontFamily: 'var(--font-sans)',
           }}
           onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}

@@ -15,23 +15,21 @@ export function AgencyDashboard() {
   const { profile } = useAuth()
   const firstName = profile?.display_name?.split(' ')[0] || 'there'
 
+  const greeting = (() => {
+    const h = new Date().getHours()
+    if (h < 12) return 'Good morning'
+    if (h < 17) return 'Good afternoon'
+    return 'Good evening'
+  })()
+
   return (
     <div className="animate-fade-up">
       {/* Welcome */}
-      <div style={{ marginBottom: 'var(--space-8)' }}>
-        <h1
-          style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: 'var(--text-3xl)',
-            fontWeight: 300,
-            color: 'var(--ink)',
-            marginBottom: 'var(--space-1)',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          Good morning, {firstName}.
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 'clamp(24px,3vw,36px)', fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)', marginBottom: 6 }}>
+          {greeting}, {firstName}.
         </h1>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--ink-4)' }}>
+        <p style={{ fontSize: '13.5px', color: 'var(--muted)' }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
         </p>
       </div>
@@ -39,38 +37,54 @@ export function AgencyDashboard() {
       {/* Onboarding progress banner */}
       <div
         style={{
-          background: 'linear-gradient(135deg, var(--brand-700) 0%, var(--brand-600) 100%)',
-          borderRadius: 'var(--radius-md)',
-          padding: 'var(--space-5) var(--space-6)',
-          marginBottom: 'var(--space-6)',
+          background: '#0B0913',
+          border: '1px solid rgba(109,61,230,0.3)',
+          borderRadius: 'var(--radius)',
+          padding: '24px 28px',
+          marginBottom: 24,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 'var(--space-4)',
+          gap: 20,
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        <div>
-          <p style={{ fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 'var(--space-1)' }}>
+        <div style={{ position: 'absolute', width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle,#6D3DE6,transparent 70%)', opacity: .35, filter: 'blur(60px)', top: -80, left: -40, pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <p style={{ fontSize: '11.5px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>
             Setup Progress
           </p>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'rgba(255,255,255,0.85)' }}>
+          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: 14 }}>
             Complete your workspace setup to unlock everything.
           </p>
-          <div style={{ marginTop: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            <div style={{ flex: 1, maxWidth: '200px', height: '4px', background: 'rgba(255,255,255,0.15)', borderRadius: '2px' }}>
-              <div style={{ width: '20%', height: '100%', background: 'var(--accent-lt)', borderRadius: '2px' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 180, height: 4, background: 'rgba(255,255,255,0.12)', borderRadius: 2 }}>
+              <div style={{ width: '20%', height: '100%', background: 'linear-gradient(90deg,#6D3DE6,#9258EE)', borderRadius: 2 }} />
             </div>
-            <span style={{ fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.45)' }}>1 of 5 steps complete</span>
+            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>1 of 5 steps complete</span>
           </div>
         </div>
-        <Link to="/agency/operations">
-          <Button
-            variant="secondary"
-            size="sm"
-            style={{ background: 'rgba(255,255,255,0.12)', color: 'white', borderColor: 'rgba(255,255,255,0.2)' }}
+        <Link to="/agency/operations" style={{ textDecoration: 'none', position: 'relative', zIndex: 1 }}>
+          <button
+            style={{
+              padding: '9px 18px',
+              borderRadius: 999,
+              border: '1px solid rgba(255,255,255,0.2)',
+              background: 'rgba(109,61,230,0.3)',
+              color: '#F3F1FA',
+              fontSize: '13.5px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-sans)',
+              whiteSpace: 'nowrap',
+              transition: 'all 150ms ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(109,61,230,0.5)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(109,61,230,0.3)' }}
           >
             Continue setup →
-          </Button>
+          </button>
         </Link>
       </div>
 
@@ -79,35 +93,37 @@ export function AgencyDashboard() {
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-          gap: 'var(--space-4)',
-          marginBottom: 'var(--space-8)',
+          gap: 16,
+          marginBottom: 28,
         }}
       >
         {QUICK_LINKS.map(link => (
           <Link key={link.path} to={link.path} style={{ textDecoration: 'none' }}>
             <Card
+              glass
               hover
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'var(--space-1)',
-              }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
             >
-              <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--ink)' }}>{link.label}</p>
-              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--ink-4)' }}>{link.desc}</p>
+              <p style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--ink)' }}>{link.label}</p>
+              <p style={{ fontSize: '13px', color: 'var(--muted)' }}>{link.desc}</p>
             </Card>
           </Link>
         ))}
       </div>
 
       {/* Phase placeholder */}
-      <Card padding="lg">
-        <div style={{ textAlign: 'center', padding: 'var(--space-6) 0' }}>
-          <Badge variant="brand" style={{ marginBottom: 'var(--space-3)' }}>Phase 01 Foundation</Badge>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--ink-4)', maxWidth: '400px', margin: '0 auto', lineHeight: 1.7 }}>
+      <Card glass padding="lg">
+        <div style={{ textAlign: 'center', padding: '24px 0' }}>
+          <Badge variant="brand" style={{ marginBottom: 14 }}>Phase 01 Foundation</Badge>
+          <p style={{ fontSize: '14px', color: 'var(--ink-2)', maxWidth: '400px', margin: '0 auto', lineHeight: 1.7 }}>
             Dashboard metrics, activity feeds, and widgets will be built in Phase 02.
-            The navigation, auth, and portal separation are live and ready.
+            Navigation, auth, and portal separation are live and ready.
           </p>
+          <div style={{ marginTop: 20 }}>
+            <Button variant="secondary" size="sm">
+              <Link to="/agency/operations" style={{ textDecoration: 'none', color: 'inherit' }}>Go to Operations Hub</Link>
+            </Button>
+          </div>
         </div>
       </Card>
     </div>

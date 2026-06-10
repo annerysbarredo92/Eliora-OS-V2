@@ -14,25 +14,25 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const base = [
   'inline-flex items-center justify-center gap-2',
-  'font-sans font-medium rounded-[var(--radius)]',
-  'transition-all duration-[var(--duration)] ease-[var(--ease)]',
+  'font-[var(--font-sans)] font-semibold rounded-[9999px]',
+  'transition-all duration-[200ms]',
   'cursor-pointer select-none',
   'disabled:opacity-50 disabled:pointer-events-none',
-  'focus-visible:outline-2 focus-visible:outline-[var(--brand-500)] focus-visible:outline-offset-2',
+  'focus-visible:outline-2 focus-visible:outline-[var(--violet)] focus-visible:outline-offset-2',
 ].join(' ')
 
 const variants: Record<Variant, string> = {
-  primary:   'bg-[var(--brand-500)] text-white hover:bg-[var(--brand-400)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow)]',
-  secondary: 'bg-[var(--brand-50)] text-[var(--brand-500)] hover:bg-[var(--brand-100)]',
-  ghost:     'bg-transparent text-[var(--ink-3)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]',
+  primary:   'bg-[var(--violet)] text-white shadow-[0_12px_26px_-10px_var(--violet)] hover:bg-[var(--violet-600)] hover:-translate-y-px',
+  secondary: 'bg-[var(--lavender-soft)] text-[var(--violet)] hover:bg-[var(--lavender-soft)]/80',
+  ghost:     'bg-transparent text-[var(--ink-2)] hover:bg-[var(--lavender-soft)] hover:text-[var(--violet)]',
   danger:    'bg-[var(--danger)] text-white hover:opacity-90',
-  outline:   'bg-transparent border border-[var(--border-2)] text-[var(--ink-2)] hover:border-[var(--brand-300)] hover:text-[var(--brand-500)]',
+  outline:   'bg-transparent border border-[var(--hairline)] text-[var(--ink-2)] hover:border-[var(--violet)] hover:text-[var(--violet)] hover:bg-[var(--lavender-soft)]',
 }
 
 const sizes: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[var(--text-xs)]',
-  md: 'h-10 px-5 text-[var(--text-sm)]',
-  lg: 'h-12 px-7 text-[var(--text-base)]',
+  sm: 'h-8 px-4 text-[13px]',
+  md: 'h-10 px-5 text-[14.5px]',
+  lg: 'h-12 px-7 text-[15px]',
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -53,5 +53,4 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     </button>
   )
 )
-
 Button.displayName = 'Button'

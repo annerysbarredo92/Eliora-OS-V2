@@ -29,18 +29,10 @@ export function AgencyOperations() {
   return (
     <div className="animate-fade-up">
       <div style={{ marginBottom: 'var(--space-6)' }}>
-        <h1
-          style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: 'var(--text-2xl)',
-            fontWeight: 400,
-            color: 'var(--ink)',
-            marginBottom: 'var(--space-1)',
-          }}
-        >
+        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)', marginBottom: 6 }}>
           Operations Hub
         </h1>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--ink-4)' }}>
+        <p style={{ fontSize: '13.5px', color: 'var(--muted)' }}>
           Your agency configuration, SOPs, and operational infrastructure.
         </p>
       </div>
@@ -50,7 +42,7 @@ export function AgencyOperations() {
         style={{
           display: 'flex',
           gap: '2px',
-          borderBottom: '1px solid var(--border)',
+          borderBottom: '1px solid var(--hairline)',
           marginBottom: 'var(--space-6)',
           overflowX: 'auto',
         }}
@@ -60,17 +52,19 @@ export function AgencyOperations() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             style={{
-              padding: 'var(--space-3) var(--space-4)',
-              fontSize: 'var(--text-sm)',
+              padding: '12px 16px',
+              fontSize: '13.5px',
               fontWeight: activeTab === tab.id ? 600 : 400,
-              color: activeTab === tab.id ? 'var(--brand-500)' : 'var(--ink-4)',
+              color: activeTab === tab.id ? 'var(--violet)' : 'var(--ink-2)',
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid var(--brand-500)' : '2px solid transparent',
+              borderBottom: activeTab === tab.id ? '2px solid var(--violet)' : '2px solid transparent',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
-              transition: 'all var(--duration-fast) var(--ease)',
+              transition: 'all 120ms ease',
               marginBottom: '-1px',
+              fontFamily: 'var(--font-sans)',
+              letterSpacing: '-0.01em',
             }}
           >
             {tab.label}
@@ -83,9 +77,9 @@ export function AgencyOperations() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <div
             style={{
-              background: 'var(--brand-50)',
-              border: '1px solid var(--brand-100)',
-              borderRadius: 'var(--radius-md)',
+              background: 'var(--lavender-soft)',
+              border: '1px solid var(--hairline)',
+              borderRadius: 'var(--radius)',
               padding: 'var(--space-5)',
               display: 'flex',
               justifyContent: 'space-between',
@@ -93,10 +87,10 @@ export function AgencyOperations() {
             }}
           >
             <div>
-              <p style={{ fontSize: 'var(--text-xs)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--brand-400)', marginBottom: 'var(--space-1)' }}>
+              <p style={{ fontSize: '11.5px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--violet)', marginBottom: 6 }}>
                 Readiness Score
               </p>
-              <p style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-2xl)', fontWeight: 400, color: 'var(--brand-700)' }}>
+              <p style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)' }}>
                 20%
               </p>
             </div>
@@ -122,7 +116,7 @@ export function AgencyOperations() {
                   height: 32,
                   borderRadius: 'var(--radius-full)',
                   background: step.done ? 'var(--success)' : 'var(--surface-3)',
-                  border: `2px solid ${step.done ? 'var(--success)' : 'var(--border-2)'}`,
+                  border: `2px solid ${step.done ? 'var(--success)' : 'var(--hairline)'}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -147,9 +141,9 @@ export function AgencyOperations() {
                     flexShrink: 0,
                     padding: 'var(--space-1) var(--space-3)',
                     borderRadius: 'var(--radius)',
-                    background: 'var(--brand-50)',
-                    border: '1px solid var(--brand-100)',
-                    color: 'var(--brand-500)',
+                    background: 'var(--lavender-soft)',
+                    border: '1px solid var(--hairline)',
+                    color: 'var(--violet)',
                     fontSize: 'var(--text-xs)',
                     fontWeight: 500,
                     cursor: 'pointer',

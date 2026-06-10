@@ -14,10 +14,12 @@ export function ClientNav() {
   return (
     <nav
       style={{
-        background: 'var(--surface)',
-        borderBottom: '1px solid var(--border)',
+        background: 'rgba(244,242,251,0.85)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid var(--hairline-2)',
         display: 'flex',
-        padding: '0 var(--space-10)',
+        padding: '0 40px',
         overflowX: 'auto',
       }}
     >
@@ -26,14 +28,15 @@ export function ClientNav() {
           key={tab.path}
           to={tab.path}
           style={({ isActive }) => ({
-            padding: 'var(--space-4) var(--space-5)',
-            fontSize: 'var(--text-sm)',
+            padding: '14px 16px',
+            fontSize: '13.5px',
             fontWeight: isActive ? 600 : 400,
-            color: isActive ? 'var(--brand-500)' : 'var(--ink-4)',
+            color: isActive ? 'var(--violet)' : 'var(--ink-2)',
             textDecoration: 'none',
-            borderBottom: isActive ? '2px solid var(--brand-500)' : '2px solid transparent',
-            transition: 'all var(--duration-fast) var(--ease)',
+            borderBottom: isActive ? '2px solid var(--violet)' : '2px solid transparent',
+            transition: 'all 120ms ease',
             whiteSpace: 'nowrap',
+            letterSpacing: '-0.01em',
           })}
         >
           {tab.label}

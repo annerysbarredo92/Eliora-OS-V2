@@ -4,7 +4,7 @@ import { ClientNav }    from '@/portals/client/layouts/ClientNav'
 
 export function ClientLayout() {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--surface)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       <ClientHeader />
       <ClientNav />
       <main

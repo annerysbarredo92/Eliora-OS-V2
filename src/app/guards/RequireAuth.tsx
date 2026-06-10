@@ -7,7 +7,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const { profile, loading } = useAuth()
   const location = useLocation()
 
-  if (loading) return <AppLoader variant="app" />
+  if (loading) return <AppLoader />
 
   if (!profile) {
     return <Navigate to="/login" state={{ from: location }} replace />
