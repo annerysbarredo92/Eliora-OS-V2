@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-13-notifications-and-intelligence
-PURPOSE: Notification engine, activity intelligence
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 13: NOTIFICATIONS AND INTELLIGENCE — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-13-notifications-and-intelligence
--- To be implemented during the phase-13-notifications-and-intelligence build sprint.
+-- Verification queries will be added during the phase-13-notifications-and-intelligence build sprint.

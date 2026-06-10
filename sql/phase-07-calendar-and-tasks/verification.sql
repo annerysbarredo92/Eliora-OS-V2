@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-07-calendar-and-tasks
-PURPOSE: Calendar events, tasks, assignments
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 07: CALENDAR AND TASKS — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-07-calendar-and-tasks
--- To be implemented during the phase-07-calendar-and-tasks build sprint.
+-- Verification queries will be added during the phase-07-calendar-and-tasks build sprint.

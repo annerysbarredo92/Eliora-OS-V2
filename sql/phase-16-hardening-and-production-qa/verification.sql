@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-16-hardening-and-production-qa
-PURPOSE: RLS audit, performance indexes, security review
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 16: HARDENING AND PRODUCTION QA — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-16-hardening-and-production-qa
--- To be implemented during the phase-16-hardening-and-production-qa build sprint.
+-- Verification queries will be added during the phase-16-hardening-and-production-qa build sprint.

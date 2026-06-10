@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-03-agency-onboarding-and-operations
-PURPOSE: Services, packages, templates, SOPs, team management
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 03: AGENCY ONBOARDING AND OPERATIONS — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-03-agency-onboarding-and-operations
--- To be implemented during the phase-03-agency-onboarding-and-operations build sprint.
+-- Verification queries will be added during the phase-03-agency-onboarding-and-operations build sprint.

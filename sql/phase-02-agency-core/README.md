@@ -1,24 +1,37 @@
-# phase-02-agency-core
+# Phase 02 — Agency Core
 
-**Purpose:** Agency workspace, client records, activity logging
+**Purpose:** Agency workspace, client records, and activity logging
 
-## Files
+---
 
-| File | Purpose |
-|------|---------|
-| schema.sql | Table definitions, types, constraints |
-| policies.sql | Row-level security policies |
-| triggers.sql | Database triggers and functions |
-| verification.sql | Queries to confirm migrations ran correctly |
-| rollback.sql | Undo instructions for this phase |
+## How to Run
 
-## Run Order
+### Step 1 — Paste into Supabase SQL Editor:
+```
+phase.sql
+```
 
-1. `schema.sql` → `policies.sql` → `triggers.sql` → `verification.sql`
+### Step 2 — Verify it worked:
+```
+verification.sql
+```
+
+### Only if you need to undo:
+```
+rollback.sql
+```
+
+---
 
 ## Status
 
-- [ ] Schema designed
-- [ ] Policies written  
-- [ ] Tested on staging
-- [ ] Run on production
+**PENDING** — Phase 02 SQL has not been written yet.
+This phase will be built during the Phase 02 build sprint.
+
+## Prerequisites
+
+Phase 01 must be complete
+
+## Tables Planned
+
+clients, activity_logs

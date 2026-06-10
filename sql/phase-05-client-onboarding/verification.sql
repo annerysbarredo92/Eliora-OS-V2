@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-05-client-onboarding
-PURPOSE: Client onboarding wizard data and progress tracking
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 05: CLIENT ONBOARDING — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-05-client-onboarding
--- To be implemented during the phase-05-client-onboarding build sprint.
+-- Verification queries will be added during the phase-05-client-onboarding build sprint.

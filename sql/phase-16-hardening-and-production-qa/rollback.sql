@@ -1,11 +1,11 @@
 /*
---------------------------------------------------
-FILE:    rollback.sql
-PHASE:   phase-16-hardening-and-production-qa
-PURPOSE: RLS audit, performance indexes, security review
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 16: HARDENING AND PRODUCTION QA — ROLLBACK
+==============================================================
+DANGER: Undoes Phase 16 entirely. Only run if reverting.
+Take a Supabase snapshot before running.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- rollback for phase-16-hardening-and-production-qa
--- To be implemented during the phase-16-hardening-and-production-qa build sprint.
+-- Rollback SQL will be added during the phase-16-hardening-and-production-qa build sprint.

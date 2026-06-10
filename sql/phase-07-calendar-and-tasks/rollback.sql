@@ -1,11 +1,11 @@
 /*
---------------------------------------------------
-FILE:    rollback.sql
-PHASE:   phase-07-calendar-and-tasks
-PURPOSE: Calendar events, tasks, assignments
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 07: CALENDAR AND TASKS — ROLLBACK
+==============================================================
+DANGER: Undoes Phase 07 entirely. Only run if reverting.
+Take a Supabase snapshot before running.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- rollback for phase-07-calendar-and-tasks
--- To be implemented during the phase-07-calendar-and-tasks build sprint.
+-- Rollback SQL will be added during the phase-07-calendar-and-tasks build sprint.

@@ -1,24 +1,37 @@
-# phase-08-files-and-deliverables
+# Phase 08 — Files And Deliverables
 
-**Purpose:** File storage, asset management, deliverables
+**Purpose:** File storage, asset management, and deliverables
 
-## Files
+---
 
-| File | Purpose |
-|------|---------|
-| schema.sql | Table definitions, types, constraints |
-| policies.sql | Row-level security policies |
-| triggers.sql | Database triggers and functions |
-| verification.sql | Queries to confirm migrations ran correctly |
-| rollback.sql | Undo instructions for this phase |
+## How to Run
 
-## Run Order
+### Step 1 — Paste into Supabase SQL Editor:
+```
+phase.sql
+```
 
-1. `schema.sql` → `policies.sql` → `triggers.sql` → `verification.sql`
+### Step 2 — Verify it worked:
+```
+verification.sql
+```
+
+### Only if you need to undo:
+```
+rollback.sql
+```
+
+---
 
 ## Status
 
-- [ ] Schema designed
-- [ ] Policies written  
-- [ ] Tested on staging
-- [ ] Run on production
+**PENDING** — Phase 08 SQL has not been written yet.
+This phase will be built during the Phase 08 build sprint.
+
+## Prerequisites
+
+Phases 01–02 must be complete
+
+## Tables Planned
+
+files, file_categories, deliverables

@@ -1,6 +1,10 @@
 node_modules
 dist
+deploys
 .env
 .env.local
 .DS_Store
+**/.DS_Store
 *.log
+.claude
+

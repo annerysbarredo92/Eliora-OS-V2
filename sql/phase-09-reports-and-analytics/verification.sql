@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-09-reports-and-analytics
-PURPOSE: Reports, client metrics, performance data
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 09: REPORTS AND ANALYTICS — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-09-reports-and-analytics
--- To be implemented during the phase-09-reports-and-analytics build sprint.
+-- Verification queries will be added during the phase-09-reports-and-analytics build sprint.

@@ -1,11 +1,11 @@
 /*
---------------------------------------------------
-FILE:    rollback.sql
-PHASE:   phase-10-billing-and-payments
-PURPOSE: Invoices, payments, subscriptions, financial logs
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 10: BILLING AND PAYMENTS — ROLLBACK
+==============================================================
+DANGER: Undoes Phase 10 entirely. Only run if reverting.
+Take a Supabase snapshot before running.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- rollback for phase-10-billing-and-payments
--- To be implemented during the phase-10-billing-and-payments build sprint.
+-- Rollback SQL will be added during the phase-10-billing-and-payments build sprint.

@@ -1,11 +1,11 @@
 /*
---------------------------------------------------
-FILE:    rollback.sql
-PHASE:   phase-02-agency-core
-PURPOSE: Agency workspace, client records, activity logging
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 02: AGENCY CORE — ROLLBACK
+==============================================================
+DANGER: Undoes Phase 02 entirely. Only run if reverting.
+Take a Supabase snapshot before running.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- rollback for phase-02-agency-core
--- To be implemented during the phase-02-agency-core build sprint.
+-- Rollback SQL will be added during the phase-02-agency-core build sprint.

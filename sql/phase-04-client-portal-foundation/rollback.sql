@@ -1,11 +1,11 @@
 /*
---------------------------------------------------
-FILE:    rollback.sql
-PHASE:   phase-04-client-portal-foundation
-PURPOSE: Client portal users, invite system, portal access
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 04: CLIENT PORTAL FOUNDATION — ROLLBACK
+==============================================================
+DANGER: Undoes Phase 04 entirely. Only run if reverting.
+Take a Supabase snapshot before running.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- rollback for phase-04-client-portal-foundation
--- To be implemented during the phase-04-client-portal-foundation build sprint.
+-- Rollback SQL will be added during the phase-04-client-portal-foundation build sprint.

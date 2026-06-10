@@ -1,11 +1,11 @@
 /*
---------------------------------------------------
-FILE:    rollback.sql
-PHASE:   phase-03-agency-onboarding-and-operations
-PURPOSE: Services, packages, templates, SOPs, team management
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 03: AGENCY ONBOARDING AND OPERATIONS — ROLLBACK
+==============================================================
+DANGER: Undoes Phase 03 entirely. Only run if reverting.
+Take a Supabase snapshot before running.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- rollback for phase-03-agency-onboarding-and-operations
--- To be implemented during the phase-03-agency-onboarding-and-operations build sprint.
+-- Rollback SQL will be added during the phase-03-agency-onboarding-and-operations build sprint.

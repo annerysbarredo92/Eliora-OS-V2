@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-14-automation-engine
-PURPOSE: Workflow automation triggers, actions, logs
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 14: AUTOMATION ENGINE — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-14-automation-engine
--- To be implemented during the phase-14-automation-engine build sprint.
+-- Verification queries will be added during the phase-14-automation-engine build sprint.

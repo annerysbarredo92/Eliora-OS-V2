@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-15-ai-layer
-PURPOSE: AI generation, AI brief system, AI logs
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 15: AI LAYER — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-15-ai-layer
--- To be implemented during the phase-15-ai-layer build sprint.
+-- Verification queries will be added during the phase-15-ai-layer build sprint.

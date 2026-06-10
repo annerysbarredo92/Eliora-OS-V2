@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-11-sales-pipeline-and-proposals
-PURPOSE: Leads, proposals, contracts, deal tracking
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 11: SALES PIPELINE AND PROPOSALS — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-11-sales-pipeline-and-proposals
--- To be implemented during the phase-11-sales-pipeline-and-proposals build sprint.
+-- Verification queries will be added during the phase-11-sales-pipeline-and-proposals build sprint.

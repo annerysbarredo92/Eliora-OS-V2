@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-02-agency-core
-PURPOSE: Agency workspace, client records, activity logging
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 02: AGENCY CORE — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-02-agency-core
--- To be implemented during the phase-02-agency-core build sprint.
+-- Verification queries will be added during the phase-02-agency-core build sprint.

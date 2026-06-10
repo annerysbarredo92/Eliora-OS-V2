@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-12-team-and-communication
-PURPOSE: Team messaging, notifications, internal notes
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 12: TEAM AND COMMUNICATION — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-12-team-and-communication
--- To be implemented during the phase-12-team-and-communication build sprint.
+-- Verification queries will be added during the phase-12-team-and-communication build sprint.

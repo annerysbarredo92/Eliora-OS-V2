@@ -1,11 +1,11 @@
 /*
---------------------------------------------------
-FILE:    rollback.sql
-PHASE:   phase-15-ai-layer
-PURPOSE: AI generation, AI brief system, AI logs
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 15: AI LAYER — ROLLBACK
+==============================================================
+DANGER: Undoes Phase 15 entirely. Only run if reverting.
+Take a Supabase snapshot before running.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- rollback for phase-15-ai-layer
--- To be implemented during the phase-15-ai-layer build sprint.
+-- Rollback SQL will be added during the phase-15-ai-layer build sprint.

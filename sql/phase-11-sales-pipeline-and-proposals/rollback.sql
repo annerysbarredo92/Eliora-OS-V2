@@ -1,11 +1,11 @@
 /*
---------------------------------------------------
-FILE:    rollback.sql
-PHASE:   phase-11-sales-pipeline-and-proposals
-PURPOSE: Leads, proposals, contracts, deal tracking
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 11: SALES PIPELINE AND PROPOSALS — ROLLBACK
+==============================================================
+DANGER: Undoes Phase 11 entirely. Only run if reverting.
+Take a Supabase snapshot before running.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- rollback for phase-11-sales-pipeline-and-proposals
--- To be implemented during the phase-11-sales-pipeline-and-proposals build sprint.
+-- Rollback SQL will be added during the phase-11-sales-pipeline-and-proposals build sprint.

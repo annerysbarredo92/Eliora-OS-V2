@@ -1,11 +1,10 @@
 /*
---------------------------------------------------
-FILE:    verification.sql
-PHASE:   phase-04-client-portal-foundation
-PURPOSE: Client portal users, invite system, portal access
-STATUS:  Placeholder — pending build sprint
---------------------------------------------------
+==============================================================
+ELIORA OS — PHASE 04: CLIENT PORTAL FOUNDATION — VERIFICATION
+==============================================================
+Run after phase.sql to confirm correct installation.
+PENDING — will be written alongside phase.sql.
+==============================================================
 */
 
--- verification for phase-04-client-portal-foundation
--- To be implemented during the phase-04-client-portal-foundation build sprint.
+-- Verification queries will be added during the phase-04-client-portal-foundation build sprint.
