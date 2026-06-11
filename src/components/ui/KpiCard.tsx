@@ -25,22 +25,22 @@ export function KpiCard({ label, value, hint, accent = 'violet', placeholder = f
         border: '1px solid var(--hairline)',
         borderRadius: 'var(--radius)',
         boxShadow: 'var(--shadow-glass)',
-        padding: '20px 22px',
+        padding: '16px 18px',
         position: 'relative',
         overflow: 'hidden',
         opacity: placeholder ? 0.62 : 1,
       }}
     >
       <div style={{ position: 'absolute', top: 0, left: 0, width: 3, height: '100%', background: ACCENTS[accent], opacity: 0.7 }} />
-      <p style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 10 }}>
+      <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 9 }}>
         {label}
       </p>
-      <p style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)', lineHeight: 1 }}>
+      <p style={{ fontSize: 25, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)', lineHeight: 1 }}>
         {value}
       </p>
-      {hint && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>{hint}</p>}
+      {hint && <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 8 }}>{hint}</p>}
       {placeholder && (
-        <span style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', background: 'var(--lavender-soft)', padding: '3px 8px', borderRadius: 999 }}>
+        <span style={{ position: 'absolute', top: 13, right: 13, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', background: 'var(--lavender-soft)', padding: '2px 7px', borderRadius: 999 }}>
           Soon
         </span>
       )}

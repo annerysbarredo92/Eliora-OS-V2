@@ -57,18 +57,18 @@ export function Modal({ open, onClose, title, subtitle, children, footer, width 
         }}
       >
         {/* Header */}
-        <div style={{ padding: '24px 26px 18px', borderBottom: '1px solid var(--hairline-2)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--hairline-2)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
           <div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>{title}</h2>
-            {subtitle && <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 4 }}>{subtitle}</p>}
+            <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>{title}</h2>
+            {subtitle && <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4, lineHeight: 1.5 }}>{subtitle}</p>}
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
             style={{
               flexShrink: 0,
-              width: 34,
-              height: 34,
+              width: 30,
+              height: 30,
               borderRadius: '50%',
               border: '1px solid var(--hairline)',
               background: 'var(--surface-solid)',
@@ -81,20 +81,20 @@ export function Modal({ open, onClose, title, subtitle, children, footer, width 
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--violet)'; e.currentTarget.style.color = 'var(--violet)' }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--hairline)'; e.currentTarget.style.color = 'var(--muted)' }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Body */}
-        <div style={{ padding: '22px 26px', maxHeight: '64vh', overflowY: 'auto' }}>
+        <div style={{ padding: '20px 24px', maxHeight: '64vh', overflowY: 'auto' }}>
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div style={{ padding: '16px 26px', borderTop: '1px solid var(--hairline-2)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--bg)' }}>
+          <div style={{ padding: '14px 24px', borderTop: '1px solid var(--hairline-2)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--bg)' }}>
             {footer}
           </div>
         )}

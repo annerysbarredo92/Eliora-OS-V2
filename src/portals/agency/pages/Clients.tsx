@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { Modal } from '@/components/ui/Modal'
+import { ActionMenu } from '@/components/ui/Menu'
+import type { MenuItem } from '@/components/ui/Menu'
 import type { Client, ClientStatus } from '@/types'
 import type { ClientFormValues } from '@/features/clients/api'
 
@@ -73,15 +75,29 @@ export function AgencyClients() {
     }
   }
 
+  function rowMenu(c: Client): MenuItem[] {
+    return [
+      { label: 'Open profile', onClick: () => navigate(`/agency/clients/${c.id}`) },
+      { label: 'Edit', onClick: () => setEditTarget(c) },
+      { label: 'Send invite',    soon: true, disabled: true, dividerBefore: true },
+      { label: 'Create content', soon: true, disabled: true },
+      { label: 'Upload files',   soon: true, disabled: true },
+      { label: 'Create report',  soon: true, disabled: true },
+      ...(c.status !== 'archived'
+        ? [{ label: 'Archive', onClick: () => setArchiveTarget(c), danger: true, dividerBefore: true } as MenuItem]
+        : []),
+    ]
+  }
+
   return (
     <div className="animate-fade-up">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)', marginBottom: 6 }}>
+          <h1 style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)', marginBottom: 4 }}>
             Client Center
           </h1>
-          <p style={{ fontSize: 13.5, color: 'var(--muted)' }}>
+          <p style={{ fontSize: 13, color: 'var(--muted)' }}>
             Manage your clients, onboarding, and relationships.
           </p>
         </div>
@@ -92,7 +108,7 @@ export function AgencyClients() {
       </div>
 
       {/* KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 22 }}>
         <KpiCard label="Total Clients"  value={metrics.total}      accent="violet" />
         <KpiCard label="Active"         value={metrics.active}     accent="success" />
         <KpiCard label="Onboarding"     value={metrics.onboarding} accent="gold" />
@@ -110,10 +126,10 @@ export function AgencyClients() {
             onChange={e => setSearch(e.target.value)}
             placeholder="Search clients, contacts, email…"
             style={{
-              width: '100%', height: 46, paddingLeft: 40, paddingRight: 14,
-              fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--ink)',
+              width: '100%', height: 42, paddingLeft: 38, paddingRight: 14,
+              fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink)',
               background: 'var(--surface-solid)', border: '1px solid var(--hairline)',
-              borderRadius: 14, outline: 'none',
+              borderRadius: 12, outline: 'none',
             }}
             onFocus={e => { e.currentTarget.style.borderColor = 'var(--violet)'; e.currentTarget.style.boxShadow = '0 0 0 4px var(--lavender-soft)' }}
             onBlur={e => { e.currentTarget.style.borderColor = 'var(--hairline)'; e.currentTarget.style.boxShadow = 'none' }}
@@ -127,7 +143,7 @@ export function AgencyClients() {
                 key={f}
                 onClick={() => setFilter(f)}
                 style={{
-                  padding: '8px 14px', borderRadius: 999, fontSize: 13, fontWeight: 600,
+                  padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 600,
                   fontFamily: 'var(--font-sans)', cursor: 'pointer', whiteSpace: 'nowrap',
                   border: '1px solid', transition: 'all 150ms ease',
                   borderColor: active ? 'var(--violet)' : 'var(--hairline)',
@@ -157,11 +173,11 @@ export function AgencyClients() {
         <>
           {/* Desktop table */}
           <div className="client-table-wrap" style={{ background: 'var(--surface)', backdropFilter: 'blur(22px) saturate(1.5)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-glass)', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ textAlign: 'left', color: 'var(--muted)', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <tr style={{ textAlign: 'left', color: 'var(--muted)', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                   {['Business', 'Primary Contact', 'Email', 'Phone', 'Status', 'Package', 'Portal', 'Health', 'Last Activity', ''].map(h => (
-                    <th key={h} style={{ padding: '14px 16px', fontWeight: 700, borderBottom: '1px solid var(--hairline-2)', whiteSpace: 'nowrap' }}>{h}</th>
+                    <th key={h} style={{ padding: '11px 14px', fontWeight: 700, borderBottom: '1px solid var(--hairline-2)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -186,12 +202,7 @@ export function AgencyClients() {
                       <td style={cellStyle}><Badge variant={HEALTH_BADGE[c.health]}>{HEALTH_LABEL[c.health]}</Badge></td>
                       <td style={{ ...cellStyle, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{relativeTime(c.last_activity_at)}</td>
                       <td style={cellStyle} onClick={e => e.stopPropagation()}>
-                        <RowActions
-                          onOpen={() => navigate(`/agency/clients/${c.id}`)}
-                          onEdit={() => setEditTarget(c)}
-                          onArchive={() => setArchiveTarget(c)}
-                          archived={c.status === 'archived'}
-                        />
+                        <ActionMenu items={rowMenu(c)} />
                       </td>
                     </tr>
                   )
@@ -205,18 +216,18 @@ export function AgencyClients() {
             {filtered.map(c => {
               const pc = primaryContact(c)
               return (
-                <div key={c.id} onClick={() => navigate(`/agency/clients/${c.id}`)} style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', padding: 18, cursor: 'pointer' }}>
+                <div key={c.id} onClick={() => navigate(`/agency/clients/${c.id}`)} style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', padding: 16, cursor: 'pointer' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                    <div>
-                      <p style={{ fontWeight: 700, color: 'var(--ink)', fontSize: 15 }}>{c.business_name}</p>
-                      <p style={{ fontSize: 12.5, color: 'var(--muted)' }}>{contactName(pc)}{pc?.email ? ` · ${pc.email}` : ''}</p>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, color: 'var(--ink)', fontSize: 14 }}>{c.business_name}</p>
+                      <p style={{ fontSize: 12, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contactName(pc)}{pc?.email ? ` · ${pc.email}` : ''}</p>
                     </div>
                     <Badge variant={STATUS_BADGE[c.status]}>{statusLabel(c.status)}</Badge>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
                     <span style={{ fontSize: 12, color: 'var(--muted)' }}>{relativeTime(c.last_activity_at)}</span>
                     <span onClick={e => e.stopPropagation()}>
-                      <RowActions onOpen={() => navigate(`/agency/clients/${c.id}`)} onEdit={() => setEditTarget(c)} onArchive={() => setArchiveTarget(c)} archived={c.status === 'archived'} />
+                      <ActionMenu items={rowMenu(c)} />
                     </span>
                   </div>
                 </div>
@@ -268,64 +279,10 @@ export function AgencyClients() {
 }
 
 const cellStyle: React.CSSProperties = {
-  padding: '14px 16px',
+  padding: '11px 14px',
   borderBottom: '1px solid var(--hairline-2)',
   color: 'var(--ink)',
   verticalAlign: 'middle',
-}
-
-function RowActions({ onOpen, onEdit, onArchive, archived }: { onOpen: () => void; onEdit: () => void; onArchive: () => void; archived: boolean }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div style={{ position: 'relative' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        aria-label="Actions"
-        style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--hairline)', background: 'var(--surface-solid)', color: 'var(--ink-2)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
-      </button>
-      {open && (
-        <div style={{ position: 'absolute', right: 0, top: 38, zIndex: 30, minWidth: 184, background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 14, boxShadow: 'var(--shadow-md)', padding: 6 }}>
-          <MenuItem label="Open profile" onClick={onOpen} />
-          <MenuItem label="Edit" onClick={onEdit} />
-          <div style={{ height: 1, background: 'var(--hairline-2)', margin: '5px 0' }} />
-          <MenuItem label="Send invite" muted />
-          <MenuItem label="Create content" muted />
-          <MenuItem label="Upload files" muted />
-          <MenuItem label="Create report" muted />
-          {!archived && (
-            <>
-              <div style={{ height: 1, background: 'var(--hairline-2)', margin: '5px 0' }} />
-              <MenuItem label="Archive" onClick={onArchive} danger />
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function MenuItem({ label, onClick, muted, danger }: { label: string; onClick?: () => void; muted?: boolean; danger?: boolean }) {
-  return (
-    <button
-      onMouseDown={onClick}
-      disabled={muted}
-      title={muted ? 'Coming in a later phase' : undefined}
-      style={{
-        width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 9, border: 'none',
-        background: 'transparent', cursor: muted ? 'not-allowed' : 'pointer',
-        fontSize: 13.5, fontFamily: 'var(--font-sans)',
-        color: danger ? 'var(--danger)' : muted ? 'var(--muted)' : 'var(--ink)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}
-      onMouseEnter={e => { if (!muted) e.currentTarget.style.background = 'var(--lavender-soft)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-    >
-      {label}{muted && <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)' }}>Soon</span>}
-    </button>
-  )
 }
 
 function SkeletonTable() {
@@ -340,11 +297,11 @@ function SkeletonTable() {
 
 function EmptyState({ hasClients, onAdd }: { hasClients: boolean; onAdd: () => void }) {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-glass)', padding: '56px 24px', textAlign: 'center' }}>
-      <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-glass)', padding: '44px 24px', textAlign: 'center' }}>
+      <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 7 }}>
         {hasClients ? 'No clients match your filters' : 'No clients yet'}
       </p>
-      <p style={{ fontSize: 14, color: 'var(--muted)', maxWidth: 360, margin: '0 auto 22px', lineHeight: 1.6 }}>
+      <p style={{ fontSize: 13.5, color: 'var(--muted)', maxWidth: 340, margin: '0 auto 20px', lineHeight: 1.6 }}>
         {hasClients ? 'Try a different search or status filter.' : 'Add your first client to start building your roster and tracking activity.'}
       </p>
       {!hasClients && <Button variant="primary" onClick={onAdd}>Add your first client</Button>}

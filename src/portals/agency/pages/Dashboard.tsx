@@ -22,11 +22,11 @@ export function AgencyDashboard() {
   return (
     <div className="animate-fade-up">
       {/* Welcome */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 'clamp(24px,3vw,36px)', fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)', marginBottom: 6 }}>
+      <div style={{ marginBottom: 22 }}>
+        <h1 style={{ fontSize: 'clamp(21px,2.6vw,30px)', fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)', marginBottom: 4 }}>
           {greeting}, {firstName}.
         </h1>
-        <p style={{ fontSize: '13.5px', color: 'var(--muted)' }}>
+        <p style={{ fontSize: '13px', color: 'var(--muted)' }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
         </p>
       </div>
@@ -35,7 +35,7 @@ export function AgencyDashboard() {
       <div
         style={{
           background: '#0B0913', border: '1px solid rgba(109,61,230,0.3)', borderRadius: 'var(--radius)',
-          padding: '24px 28px', marginBottom: 24, display: 'flex', alignItems: 'center',
+          padding: '20px 24px', marginBottom: 22, display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: 20, position: 'relative', overflow: 'hidden',
         }}
       >
@@ -63,7 +63,7 @@ export function AgencyDashboard() {
 
       {/* Real client metrics */}
       <p style={kicker}>Clients</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 22 }}>
         <KpiCard label="Active Clients"     value={loading ? '—' : metrics.active}     accent="success" />
         <KpiCard label="Onboarding"         value={loading ? '—' : metrics.onboarding} accent="gold" />
         <KpiCard label="Archived"           value={loading ? '—' : metrics.archived}   accent="muted" />
@@ -72,7 +72,7 @@ export function AgencyDashboard() {
 
       {/* Placeholder metrics (later phases) */}
       <p style={kicker}>Operations <span style={{ color: 'var(--muted)', textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>· coming in later phases</span></p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 24 }}>
         <KpiCard label="Pending Approvals"   value="—" accent="muted" placeholder />
         <KpiCard label="Upcoming Content"    value="—" accent="muted" placeholder />
         <KpiCard label="Outstanding Revenue" value="—" accent="muted" placeholder />
@@ -82,8 +82,8 @@ export function AgencyDashboard() {
       {/* Recent activity */}
       <Card glass>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h3 style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--muted)' }}>Recent Activity</h3>
-          <Link to="/agency/clients" style={{ fontSize: 12.5, color: 'var(--violet)', textDecoration: 'none', fontWeight: 600 }}>View clients →</Link>
+          <h3 style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)' }}>Recent Activity</h3>
+          <Link to="/agency/clients" style={{ fontSize: 12, color: 'var(--violet)', textDecoration: 'none', fontWeight: 600 }}>View clients →</Link>
         </div>
         <ActivityFeed items={activity.items} loading={activity.loading} emptyLabel="No activity yet — add your first client to get started." />
       </Card>
@@ -92,6 +92,6 @@ export function AgencyDashboard() {
 }
 
 const kicker: React.CSSProperties = {
-  fontSize: 11.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-  color: 'var(--ink-2)', marginBottom: 12,
+  fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+  color: 'var(--ink-2)', marginBottom: 11,
 }

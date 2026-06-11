@@ -28,7 +28,7 @@ export function ActivityFeed({ items, loading, emptyLabel = 'No activity yet.' }
 
   if (items.length === 0) {
     return (
-      <p style={{ fontSize: 13.5, color: 'var(--muted)', padding: '20px 0', textAlign: 'center' }}>
+      <p style={{ fontSize: 13, color: 'var(--muted)', padding: '20px 0', textAlign: 'center' }}>
         {emptyLabel}
       </p>
     )
@@ -49,10 +49,10 @@ export function ActivityFeed({ items, loading, emptyLabel = 'No activity yet.' }
             }}
           />
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.4 }}>
+            <p style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.45 }}>
               {item.description || item.action}
             </p>
-            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+            <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>
               {relativeTime(item.created_at)}
             </p>
           </div>

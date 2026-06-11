@@ -13,12 +13,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base = [
-  'inline-flex items-center justify-center gap-2',
+  'inline-flex items-center justify-center gap-1.5',
   'font-[var(--font-sans)] font-semibold rounded-[9999px]',
   'transition-all duration-[200ms]',
   'cursor-pointer select-none',
   'disabled:opacity-50 disabled:pointer-events-none',
   'focus-visible:outline-2 focus-visible:outline-[var(--violet)] focus-visible:outline-offset-2',
+  '[&_svg]:w-[15px] [&_svg]:h-[15px]',
 ].join(' ')
 
 const variants: Record<Variant, string> = {
@@ -30,9 +31,9 @@ const variants: Record<Variant, string> = {
 }
 
 const sizes: Record<Size, string> = {
-  sm: 'h-8 px-4 text-[13px]',
-  md: 'h-10 px-5 text-[14.5px]',
-  lg: 'h-12 px-7 text-[15px]',
+  sm: 'h-8 px-3.5 text-[12.5px]',
+  md: 'h-9 px-4 text-[13.5px]',
+  lg: 'h-11 px-6 text-[14px]',
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

@@ -96,32 +96,32 @@ export function AgencyClientProfile() {
       </Link>
 
       {/* Header */}
-      <div style={{ background: 'var(--surface)', backdropFilter: 'blur(22px) saturate(1.5)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-glass)', padding: 24, marginBottom: 20 }}>
+      <div style={{ background: 'var(--surface)', backdropFilter: 'blur(22px) saturate(1.5)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-glass)', padding: 20, marginBottom: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#6D3DE6,#9258EE)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 700, fontSize: 22, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#6D3DE6,#9258EE)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 700, fontSize: 19, flexShrink: 0 }}>
               {client.business_name.slice(0, 1).toUpperCase()}
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)' }}>{client.business_name}</h1>
+                <h1 style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)' }}>{client.business_name}</h1>
                 <Badge variant={STATUS_BADGE[client.status]}>{statusLabel(client.status)}</Badge>
               </div>
-              <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 4 }}>
+              <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
                 {client.industry || 'No industry set'} · {contactName(pc)}{pc?.email ? ` · ${pc.email}` : ''}
               </p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Button variant="outline" onClick={() => setEditing(true)}>Edit</Button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Edit</Button>
             {client.status !== 'archived' && (
-              <Button variant="ghost" onClick={() => setArchiveOpen(true)}>Archive</Button>
+              <Button variant="ghost" size="sm" onClick={() => setArchiveOpen(true)}>Archive</Button>
             )}
           </div>
         </div>
 
         {/* Snapshot cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginTop: 22 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))', gap: 10, marginTop: 20 }}>
           <Snapshot label="Status" value={statusLabel(client.status)} />
           <Snapshot label="Portal Status" value={client.portal_enabled ? 'Enabled' : 'Off'} />
           <Snapshot label="Package" value={client.package_name || '—'} soon />
@@ -137,7 +137,7 @@ export function AgencyClientProfile() {
             key={t.id}
             onClick={() => setTab(t.id)}
             style={{
-              padding: '12px 16px', fontSize: 13.5, fontFamily: 'var(--font-sans)',
+              padding: '10px 14px', fontSize: 13, fontFamily: 'var(--font-sans)',
               fontWeight: tab === t.id ? 600 : 400,
               color: tab === t.id ? 'var(--violet)' : 'var(--ink-2)',
               background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
@@ -237,9 +237,9 @@ export function AgencyClientProfile() {
 
 function Snapshot({ label, value, soon }: { label: string; value: string; soon?: boolean }) {
   return (
-    <div style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 14, padding: '12px 14px', position: 'relative' }}>
-      <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>{label}</p>
-      <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{value}</p>
+    <div style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 12, padding: '11px 13px', position: 'relative' }}>
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 5 }}>{label}</p>
+      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{value}</p>
       {soon && <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)' }}>soon</span>}
     </div>
   )
@@ -247,8 +247,8 @@ function Snapshot({ label, value, soon }: { label: string; value: string; soon?:
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', padding: 22 }}>
-      <h3 style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 16 }}>{title}</h3>
+    <section style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', padding: 20 }}>
+      <h3 style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 14 }}>{title}</h3>
       {children}
     </section>
   )
@@ -257,11 +257,11 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 function InfoRow({ label, value, link }: { label: string; value: string | null | undefined; link?: boolean }) {
   const display = value && value.trim() ? value : '—'
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '9px 0', borderBottom: '1px solid var(--hairline-2)' }}>
-      <span style={{ fontSize: 13, color: 'var(--muted)', flexShrink: 0 }}>{label}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '8px 0', borderBottom: '1px solid var(--hairline-2)' }}>
+      <span style={{ fontSize: 12.5, color: 'var(--muted)', flexShrink: 0 }}>{label}</span>
       {link && value
-        ? <a href={value.startsWith('http') ? value : `https://${value}`} target="_blank" rel="noreferrer" style={{ fontSize: 13.5, color: 'var(--violet)', fontWeight: 500, textAlign: 'right', wordBreak: 'break-all' }}>{value}</a>
-        : <span style={{ fontSize: 13.5, color: display === '—' ? 'var(--muted)' : 'var(--ink)', fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>{display}</span>}
+        ? <a href={value.startsWith('http') ? value : `https://${value}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--violet)', fontWeight: 500, textAlign: 'right', wordBreak: 'break-all' }}>{value}</a>
+        : <span style={{ fontSize: 13, color: display === '—' ? 'var(--muted)' : 'var(--ink)', fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>{display}</span>}
     </div>
   )
 }
