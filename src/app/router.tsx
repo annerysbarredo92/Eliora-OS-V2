@@ -23,6 +23,7 @@ import { ForgotPage }      from '@/pages/auth/ForgotPage'
 // Agency pages
 import { AgencyDashboard }      from '@/portals/agency/pages/Dashboard'
 import { AgencyClients }        from '@/portals/agency/pages/Clients'
+import { AgencyClientProfile }  from '@/portals/agency/pages/ClientProfile'
 import { AgencyContent }        from '@/portals/agency/pages/Content'
 import { AgencyCalendar }       from '@/portals/agency/pages/Calendar'
 import { AgencyTasks }          from '@/portals/agency/pages/Tasks'
@@ -79,7 +80,7 @@ export const router = createBrowserRouter([
       { index: true,              element: <Navigate to="dashboard" replace /> },
       { path: 'dashboard',        element: <AgencyDashboard /> },
       { path: 'clients',          element: <AgencyClients /> },
-      { path: 'clients/:id',      element: <AgencyClients /> },
+      { path: 'clients/:clientId', element: <AgencyClientProfile /> },
       { path: 'content',          element: <AgencyContent /> },
       { path: 'calendar',         element: <AgencyCalendar /> },
       { path: 'tasks',            element: <AgencyTasks /> },

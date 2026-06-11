@@ -45,21 +45,72 @@ export interface Agency {
   created_at: string
 }
 
-/* ── Client ─────────────────────────────────────────────── */
+/* ── Client (Phase 02) ──────────────────────────────────── */
+export type ClientStatus = 'active' | 'onboarding' | 'paused' | 'archived' | 'lead'
+export type ClientHealth = 'healthy' | 'at_risk' | 'critical' | 'unknown'
+
+export interface ClientContact {
+  id: string
+  agency_id: string
+  client_id: string
+  first_name: string
+  last_name: string
+  email: string | null
+  phone: string | null
+  title: string | null
+  is_primary: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Client {
   id: string
   agency_id: string
-  contact_name: string
   business_name: string
-  email: string
-  phone: string | null
-  status: 'active' | 'inactive' | 'paused' | 'onboarding' | 'lead'
-  business_type: string | null
+  industry: string | null
+  website: string | null
+  business_phone: string | null
+  business_address: string | null
+  status: ClientStatus
+  health: ClientHealth
   package_name: string | null
-  monthly_value: number | null
   portal_enabled: boolean
-  onboarding_complete: boolean
+  internal_notes: string | null
+  last_activity_at: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
+  updated_at: string
+  /** Embedded via Supabase relationship select. */
+  client_contacts?: ClientContact[]
+}
+
+/** Convenience shape: a client with its resolved primary contact. */
+export interface ClientWithPrimary extends Client {
+  primary_contact: ClientContact | null
+}
+
+/* ── Activity (Phase 02) ────────────────────────────────── */
+export interface ActivityLog {
+  id: string
+  agency_id: string
+  client_id: string | null
+  actor_profile_id: string | null
+  action: string
+  entity_type: string
+  entity_id: string | null
+  description: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface DashboardMetrics {
+  total: number
+  active: number
+  onboarding: number
+  archived: number
+  paused: number
+  lead: number
 }
 
 /* ── Navigation ─────────────────────────────────────────── */
