@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import type { ClientOnboardingProgress } from '@/types'
 import { useAuth } from '@/hooks/useAuth'
 import { useClient } from '@/features/clients/hooks'
 import { useActivity } from '@/features/activity/hooks'
@@ -11,6 +12,7 @@ import {
   HEALTH_LABEL, relativeTime,
 } from '@/features/clients/helpers'
 import { ClientFormModal } from '@/features/clients/components/ClientFormModal'
+import { getOnboarding, enablePortal } from '@/features/portal/api'
 import { ActivityFeed } from '@/features/activity/ActivityFeed'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -39,10 +41,29 @@ export function AgencyClientProfile() {
   const [editing, setEditing]   = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiving, setArchiving] = useState(false)
+  const [portalProgress, setPortalProgress] = useState<ClientOnboardingProgress | null>(null)
+  const [enabling, setEnabling] = useState(false)
 
   const ctx = profile?.agency_id && profile?.id
     ? { agencyId: profile.agency_id, actorId: profile.id }
     : null
+
+  useEffect(() => {
+    if (clientId) getOnboarding(clientId).then(setPortalProgress)
+  }, [clientId])
+
+  async function handleEnablePortal() {
+    if (!ctx || !client) return
+    setEnabling(true)
+    try {
+      await enablePortal(client.id, ctx)
+      await refresh()
+      await activity.refresh()
+      setPortalProgress(await getOnboarding(client.id))
+    } finally {
+      setEnabling(false)
+    }
+  }
 
   async function handleEdit(values: ClientFormValues) {
     if (!ctx || !client) throw new Error('No context')
@@ -172,9 +193,31 @@ export function AgencyClientProfile() {
               </p>
             </Panel>
           </div>
-          <Panel title="Recent Activity">
-            <ActivityFeed items={activity.items.slice(0, 8)} loading={activity.loading} />
-          </Panel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <Panel title="Client Portal">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <Badge variant={client.portal_enabled ? 'success' : 'default'}>{client.portal_enabled ? 'Enabled' : 'Not enabled'}</Badge>
+                {!client.portal_enabled && (
+                  <Button variant="primary" size="sm" onClick={handleEnablePortal} loading={enabling}>Enable portal</Button>
+                )}
+              </div>
+              <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>Client onboarding</span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--violet)' }}>{portalProgress?.completion_pct ?? 0}%</span>
+              </div>
+              <div style={{ height: 6, background: 'var(--lavender-soft)', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ width: `${portalProgress?.completion_pct ?? 0}%`, height: '100%', background: 'linear-gradient(90deg,#6D3DE6,#9258EE)', borderRadius: 999, transition: 'width 400ms ease' }} />
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10, lineHeight: 1.5 }}>
+                {client.portal_enabled
+                  ? 'Your client can sign in to complete onboarding and manage their details.'
+                  : 'Enable the portal to provision your client’s workspace.'}
+              </p>
+            </Panel>
+            <Panel title="Recent Activity">
+              <ActivityFeed items={activity.items.slice(0, 8)} loading={activity.loading} />
+            </Panel>
+          </div>
         </div>
       )}
 

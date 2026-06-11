@@ -210,6 +210,63 @@ export interface AgencyHealthScore {
   updated_at: string
 }
 
+/* ── Client Portal (Phase 04) ───────────────────────────── */
+export interface ClientPortalProfile {
+  id: string
+  agency_id: string
+  client_id: string
+  company_name: string | null
+  company_size: string | null
+  industry: string | null
+  website: string | null
+  business_phone: string | null
+  business_address: string | null
+  contact_name: string | null
+  contact_email: string | null
+  contact_phone: string | null
+  contact_title: string | null
+  brand_colors: unknown[]
+  brand_voice: string | null
+  logo_url: string | null
+  brand_notes: string | null
+  social_accounts: Record<string, string>
+  business_goals: string | null
+  target_audience: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ClientPortalSettings {
+  id: string
+  agency_id: string
+  client_id: string
+  communication_channel: string
+  communication_frequency: string
+  communication_notes: string | null
+  approval_workflow: string
+  approval_turnaround: string
+  approver_name: string | null
+  notify_email: boolean
+  notify_content: boolean
+  notify_reports: boolean
+  notify_messages: boolean
+  timezone: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ClientOnboardingProgress {
+  id: string
+  agency_id: string
+  client_id: string
+  sections: Record<string, boolean>
+  completion_pct: number
+  skipped: boolean
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 /* ── Navigation ─────────────────────────────────────────── */
 export interface NavItem {
   id: string

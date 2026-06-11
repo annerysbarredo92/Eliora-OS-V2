@@ -27,9 +27,14 @@ export function ClientHeader() {
     >
       <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,#6D3DE6,transparent 70%)', opacity: .3, filter: 'blur(70px)', top: -150, left: -80, pointerEvents: 'none' }} />
 
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <InfinityMark size={18} />
-        <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em', color: '#F3F1FA' }}>Eliora</span>
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <InfinityMark size={18} />
+          <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em', color: '#F3F1FA' }}>Eliora</span>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#C2A6F0', background: 'rgba(194,166,240,0.14)', border: '1px solid rgba(194,166,240,0.25)', padding: '4px 10px', borderRadius: 999 }}>
+          Client Portal
+        </span>
       </div>
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>

@@ -45,6 +45,7 @@ import { ClientReports }        from '@/portals/client/pages/Reports'
 import { ClientBilling }        from '@/portals/client/pages/Billing'
 import { ClientMessages }       from '@/portals/client/pages/Messages'
 import { ClientOnboarding }     from '@/portals/client/pages/Onboarding'
+import { ClientSettings }       from '@/portals/client/pages/Settings'
 
 export const router = createBrowserRouter([
   /* ── Public ─────────────────────────────────────────── */
@@ -116,6 +117,7 @@ export const router = createBrowserRouter([
       { path: 'billing',      element: <ClientBilling /> },
       { path: 'messages',     element: <ClientMessages /> },
       { path: 'onboarding',   element: <ClientOnboarding /> },
+      { path: 'settings',     element: <ClientSettings /> },
     ],
   },
 
