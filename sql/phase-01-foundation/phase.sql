@@ -5,6 +5,10 @@ ELIORA OS — PHASE 01: FOUNDATION
 File to paste into Supabase SQL Editor: phase.sql
 Then verify with: verification.sql
 
+This file is FULLY IDEMPOTENT — safe to paste and re-run any
+number of times on the same project. Re-running will not error
+on existing enums, triggers, or policies.
+
 What this phase installs:
   1. Extensions
   2. Enums (user_role, plan_type)
@@ -14,11 +18,13 @@ What this phase installs:
   6. Table: agency_settings
   7. Indexes
   8. RLS enablement
-  9. RLS policies
- 10. Signup trigger (auto-creates profile + agency on new user)
- 11. Grants
+  9. SECURITY DEFINER helpers (avoid RLS recursion)
+ 10. RLS policies
+ 11. Signup trigger (auto-creates agency + profile + settings)
+ 12. Grants
 
 Run this ONCE on a fresh Supabase project before any other phase.
+(Re-running is safe and will repair an existing install.)
 ==============================================================
 */
 
@@ -29,27 +35,34 @@ create extension if not exists "uuid-ossp";
 
 
 -- ── 2. ENUMS ──────────────────────────────────────────────────────────────────
+-- Guarded so re-running the file does not error with "type already exists".
 
-create type user_role as enum (
-  'master_admin',
-  'agency_owner',
-  'admin',
-  'content_manager',
-  'strategist',
-  'editor',
-  'client_success',
-  'contractor',
-  'team_member',
-  'client_user',
-  'pending'
-);
+do $$ begin
+  create type user_role as enum (
+    'master_admin',
+    'agency_owner',
+    'admin',
+    'content_manager',
+    'strategist',
+    'editor',
+    'client_success',
+    'contractor',
+    'team_member',
+    'client_user',
+    'pending'
+  );
+exception when duplicate_object then null;
+end $$;
 
-create type plan_type as enum (
-  'starter',
-  'growth',
-  'scale',
-  'enterprise'
-);
+do $$ begin
+  create type plan_type as enum (
+    'starter',
+    'growth',
+    'scale',
+    'enterprise'
+  );
+exception when duplicate_object then null;
+end $$;
 
 
 -- ── 3. SHARED FUNCTIONS ───────────────────────────────────────────────────────
@@ -84,6 +97,7 @@ create table if not exists agencies (
   updated_at          timestamptz not null default now()
 );
 
+drop trigger if exists agencies_set_updated_at on agencies;
 create trigger agencies_set_updated_at
   before update on agencies
   for each row execute function set_updated_at();
@@ -110,6 +124,7 @@ create table if not exists profiles (
   updated_at          timestamptz not null default now()
 );
 
+drop trigger if exists profiles_set_updated_at on profiles;
 create trigger profiles_set_updated_at
   before update on profiles
   for each row execute function set_updated_at();
@@ -129,6 +144,7 @@ create table if not exists agency_settings (
   unique (agency_id, key)
 );
 
+drop trigger if exists agency_settings_set_updated_at on agency_settings;
 create trigger agency_settings_set_updated_at
   before update on agency_settings
   for each row execute function set_updated_at();
@@ -136,9 +152,9 @@ create trigger agency_settings_set_updated_at
 
 -- ── 7. INDEXES ────────────────────────────────────────────────────────────────
 
-create index if not exists profiles_agency_id_idx   on profiles(agency_id);
-create index if not exists profiles_role_idx         on profiles(role);
-create index if not exists profiles_email_idx        on profiles(email);
+create index if not exists profiles_agency_id_idx    on profiles(agency_id);
+create index if not exists profiles_role_idx          on profiles(role);
+create index if not exists profiles_email_idx         on profiles(email);
 create index if not exists agency_settings_agency_idx on agency_settings(agency_id);
 
 
@@ -149,22 +165,51 @@ alter table profiles        enable row level security;
 alter table agency_settings enable row level security;
 
 
--- ── 9. RLS POLICIES ───────────────────────────────────────────────────────────
+-- ── 9. SECURITY DEFINER HELPERS ───────────────────────────────────────────────
+-- CRITICAL: these read the caller's own profile WITHOUT triggering RLS.
+--
+-- Why this matters: a policy on `profiles` that subqueries `profiles`
+-- (e.g. "read teammates in my agency") causes Postgres to re-evaluate the
+-- same policy on the inner subquery, producing:
+--     ERROR: infinite recursion detected in policy for relation "profiles"
+-- That error makes EVERY profile read fail — which is what made signup appear
+-- to succeed while login reported "Account not found".
+--
+-- By moving the "who am I / what agency am I in" lookup into a SECURITY DEFINER
+-- function, the inner read bypasses RLS and the recursion disappears.
+
+create or replace function public.current_agency_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select agency_id from public.profiles where id = auth.uid();
+$$;
+
+create or replace function public.current_user_role()
+returns user_role
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from public.profiles where id = auth.uid();
+$$;
+
+
+-- ── 10. RLS POLICIES ──────────────────────────────────────────────────────────
+-- Dropped-then-recreated so the file is safe to re-run.
 
 -- agencies ─────────────────────────────────────────────────────────────────────
 
--- Any member of an agency can read their own agency row.
+drop policy if exists "Agency members can read own agency" on agencies;
 create policy "Agency members can read own agency"
   on agencies for select
-  using (
-    id in (
-      select agency_id from profiles
-      where id = auth.uid()
-      and agency_id is not null
-    )
-  );
+  using (id = public.current_agency_id());
 
--- Only the agency owner can update the agency row.
+drop policy if exists "Agency owner can update agency" on agencies;
 create policy "Agency owner can update agency"
   on agencies for update
   using (owner_id = auth.uid());
@@ -172,58 +217,52 @@ create policy "Agency owner can update agency"
 -- profiles ─────────────────────────────────────────────────────────────────────
 
 -- Every user can always read their own profile.
+-- (This single policy is what login + session bootstrap rely on.)
+drop policy if exists "User can read own profile" on profiles;
 create policy "User can read own profile"
   on profiles for select
   using (id = auth.uid());
 
 -- Every user can update their own profile.
+drop policy if exists "User can update own profile" on profiles;
 create policy "User can update own profile"
   on profiles for update
   using (id = auth.uid());
 
 -- Agency members can read other profiles within the same agency.
--- (Required for team directory, @mentions, assignment dropdowns.)
+-- Uses current_agency_id() (SECURITY DEFINER) to avoid RLS recursion.
+drop policy if exists "Agency members can read team profiles" on profiles;
 create policy "Agency members can read team profiles"
   on profiles for select
   using (
     agency_id is not null
-    and agency_id in (
-      select agency_id from profiles
-      where id = auth.uid()
-      and agency_id is not null
-    )
+    and agency_id = public.current_agency_id()
   );
 
 -- agency_settings ──────────────────────────────────────────────────────────────
 
--- Agency members can read their agency settings.
+drop policy if exists "Agency members can read agency settings" on agency_settings;
 create policy "Agency members can read agency settings"
   on agency_settings for select
-  using (
-    agency_id in (
-      select agency_id from profiles
-      where id = auth.uid()
-      and agency_id is not null
-    )
-  );
+  using (agency_id = public.current_agency_id());
 
--- Only agency owners and admins can write settings.
--- Role check is done via profiles join.
+drop policy if exists "Agency admins can write agency settings" on agency_settings;
 create policy "Agency admins can write agency settings"
   on agency_settings for all
   using (
-    agency_id in (
-      select agency_id from profiles
-      where id = auth.uid()
-      and role in ('master_admin', 'agency_owner', 'admin')
-    )
+    agency_id = public.current_agency_id()
+    and public.current_user_role() in ('master_admin', 'agency_owner', 'admin')
   );
 
 
--- ── 10. SIGNUP TRIGGER ────────────────────────────────────────────────────────
+-- ── 11. SIGNUP TRIGGER ────────────────────────────────────────────────────────
 -- Fires after every new row in auth.users.
--- For agency_owner signups: creates the agency row first, then the profile.
+-- For agency_owner signups: creates the agency, the profile, AND a default
+-- agency_settings row, all inside the same transaction.
 -- For all other signups: creates only the profile (agency_id assigned later).
+--
+-- SECURITY DEFINER + explicit search_path so it runs with the privileges needed
+-- to write into public tables regardless of the calling role.
 
 create or replace function handle_new_user()
 returns trigger
@@ -250,7 +289,7 @@ begin
   begin
     _role := coalesce(new.raw_user_meta_data->>'role', 'agency_owner')::user_role;
   exception when invalid_text_representation then
-    _role := 'pending';
+    _role := 'agency_owner';
   end;
 
   -- Compute two-letter initials
@@ -258,7 +297,7 @@ begin
   _second := upper(substr(split_part(_display_name, ' ', 2), 1, 1));
   _initials := coalesce(nullif(_first || _second, ''), '?');
 
-  -- For agency_owner: create the agency first
+  -- For agency_owner: create the agency + default settings first
   if _role = 'agency_owner' then
     _agency_name := coalesce(
       nullif(trim(new.raw_user_meta_data->>'agency_name'), ''),
@@ -274,6 +313,11 @@ begin
       new.id
     )
     returning id into _agency_id;
+
+    -- Seed a default agency_settings row so the agency is fully provisioned.
+    insert into agency_settings (agency_id, key, value)
+    values (_agency_id, 'onboarding', jsonb_build_object('step', 1, 'complete', false))
+    on conflict (agency_id, key) do nothing;
   end if;
 
   -- Create the profile row
@@ -295,14 +339,13 @@ $$;
 
 -- Drop and recreate to avoid duplicate trigger errors on re-runs
 drop trigger if exists on_auth_user_created on auth.users;
-
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function handle_new_user();
 
 
--- ── 11. GRANTS ────────────────────────────────────────────────────────────────
--- The anon and authenticated roles need select on public tables via the API.
+-- ── 12. GRANTS ────────────────────────────────────────────────────────────────
+-- The anon and authenticated roles reach these tables through the API.
 -- RLS policies control which rows each role can actually see.
 
 grant usage on schema public to anon, authenticated;
@@ -311,5 +354,9 @@ grant select, insert, update on profiles        to authenticated;
 grant select, insert, update on agencies        to authenticated;
 grant select, insert, update on agency_settings to authenticated;
 
-grant select on profiles        to anon;
-grant select on agencies        to anon;
+grant select on profiles to anon;
+grant select on agencies to anon;
+
+-- Allow the API roles to call the SECURITY DEFINER helpers used by policies.
+grant execute on function public.current_agency_id()  to anon, authenticated;
+grant execute on function public.current_user_role()  to anon, authenticated;

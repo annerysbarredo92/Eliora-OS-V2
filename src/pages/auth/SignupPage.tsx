@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { fetchProfile } from '@/lib/auth'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
@@ -13,13 +14,15 @@ export function SignupPage() {
   const [password,   setPassword]   = useState('')
   const [loading,    setLoading]    = useState(false)
   const [error,      setError]      = useState<string | null>(null)
+  const [notice,     setNotice]     = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setNotice(null)
 
-    const { error: signupError } = await supabase.auth.signUp({
+    const { data, error: signupError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -33,6 +36,26 @@ export function SignupPage() {
 
     if (signupError) {
       setError(signupError.message)
+      setLoading(false)
+      return
+    }
+
+    // No session means email confirmation is still ON in Supabase.
+    // Don't bounce the user into the app (which would redirect to login).
+    if (!data.session || !data.user) {
+      setNotice('Account created. Check your email to confirm, then sign in.')
+      setLoading(false)
+      return
+    }
+
+    // Confirm the auth trigger created the agency + profile before entering
+    // the app. Retries cover the brief commit/visibility window.
+    const profile = await fetchProfile(data.user.id, 5)
+    if (!profile) {
+      setError(
+        'Your account was created but the workspace could not be loaded. ' +
+        'Please try signing in.'
+      )
       setLoading(false)
       return
     }
@@ -89,6 +112,12 @@ export function SignupPage() {
         {error && (
           <div style={{ fontSize: '13px', color: 'var(--danger)', background: 'var(--danger-bg)', padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(232,97,122,0.2)' }}>
             {error}
+          </div>
+        )}
+
+        {notice && (
+          <div style={{ fontSize: '13px', color: 'var(--violet)', background: 'var(--lavender-soft)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--hairline)' }}>
+            {notice}
           </div>
         )}
 

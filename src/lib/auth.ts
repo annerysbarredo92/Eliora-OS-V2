@@ -31,15 +31,28 @@ export function canAccess(profile: UserProfile, requiredRoles: UserRole[]): bool
 }
 
 /* ── Profile fetch ──────────────────────────────────────── */
-export async function fetchProfile(userId: string): Promise<UserProfile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
+// `.maybeSingle()` returns { data: null } for 0 rows instead of throwing,
+// so a missing profile is distinguishable from a real query error.
+// `retries` covers the brief window right after signup where the row was just
+// created by the auth trigger and may not yet be visible to this read.
+export async function fetchProfile(userId: string, retries = 0): Promise<UserProfile | null> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle()
 
-  if (error || !data) return null
-  return data as UserProfile
+    if (data) return data as UserProfile
+
+    // A real error (e.g. RLS) is logged so it is not silently swallowed.
+    if (error) console.error('fetchProfile error:', error.message)
+
+    if (attempt < retries) {
+      await new Promise(resolve => setTimeout(resolve, 350))
+    }
+  }
+  return null
 }
 
 /* ── Sign out ───────────────────────────────────────────── */

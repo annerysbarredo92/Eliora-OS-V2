@@ -28,7 +28,9 @@ drop table if exists profiles        cascade;
 drop table if exists agencies        cascade;
 
 
--- ── Drop shared functions ─────────────────────────────────────────────────────
+-- ── Drop shared functions + RLS helpers ──────────────────────────────────────
+drop function if exists public.current_agency_id();
+drop function if exists public.current_user_role();
 drop function if exists set_updated_at();
 
 

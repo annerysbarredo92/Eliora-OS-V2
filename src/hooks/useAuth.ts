@@ -27,7 +27,7 @@ export function useAuth(): AuthState {
         return
       }
 
-      const profile = await fetchProfile(session.user.id)
+      const profile = await fetchProfile(session.user.id, 3)
       if (mounted) {
         setState({ profile, loading: false, error: profile ? null : 'Profile not found' })
       }
@@ -41,7 +41,7 @@ export function useAuth(): AuthState {
           if (mounted) setState({ profile: null, loading: false, error: null })
           return
         }
-        const profile = await fetchProfile(session.user.id)
+        const profile = await fetchProfile(session.user.id, 3)
         if (mounted) {
           setState({ profile, loading: false, error: null })
         }

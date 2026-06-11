@@ -28,7 +28,7 @@ export function LoginPage() {
       return
     }
 
-    const profile = await fetchProfile(data.user.id)
+    const profile = await fetchProfile(data.user.id, 2)
     if (!profile) {
       setError('Account not found. Please contact your administrator.')
       setLoading(false)
