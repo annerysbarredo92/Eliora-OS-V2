@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useClients } from '@/features/clients/hooks'
 import { useActivity } from '@/features/activity/hooks'
+import { useSetup } from '@/features/operations/hooks'
 import { ActivityFeed } from '@/features/activity/ActivityFeed'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { Card } from '@/components/ui/Card'
@@ -10,7 +11,13 @@ export function AgencyDashboard() {
   const { profile } = useAuth()
   const { metrics, loading } = useClients()
   const activity = useActivity({ limit: 8 })
+  const setup = useSetup(profile?.agency_id ?? null)
   const firstName = profile?.display_name?.split(' ')[0] || 'there'
+
+  const completion = setup.progress?.completion_pct ?? 0
+  const completedSteps = setup.progress?.completed_steps ?? 0
+  const totalSteps = setup.progress?.total_steps ?? 0
+  const setupDone = totalSteps > 0 && completion >= 100
 
   const greeting = (() => {
     const h = new Date().getHours()
@@ -41,13 +48,19 @@ export function AgencyDashboard() {
       >
         <div style={{ position: 'absolute', width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle,#6D3DE6,transparent 70%)', opacity: .35, filter: 'blur(60px)', top: -80, left: -40, pointerEvents: 'none' }} />
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <p style={{ fontSize: '11.5px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>Setup Progress</p>
-          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: 14 }}>Complete your workspace setup to unlock everything.</p>
+          <p style={{ fontSize: '11.5px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>
+            {setupDone ? 'Setup Complete' : 'Setup Progress'}
+          </p>
+          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginBottom: 14 }}>
+            {setupDone ? 'Your workspace is fully set up. Nice work.' : 'Complete your workspace setup to unlock everything.'}
+          </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 180, height: 4, background: 'rgba(255,255,255,0.12)', borderRadius: 2 }}>
-              <div style={{ width: '20%', height: '100%', background: 'linear-gradient(90deg,#6D3DE6,#9258EE)', borderRadius: 2 }} />
+              <div style={{ width: `${completion}%`, height: '100%', background: 'linear-gradient(90deg,#6D3DE6,#9258EE)', borderRadius: 2, transition: 'width 400ms ease' }} />
             </div>
-            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>1 of 5 steps complete</span>
+            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
+              {totalSteps > 0 ? `${completedSteps} of ${totalSteps} steps complete` : 'Loading…'}
+            </span>
           </div>
         </div>
         <Link to="/agency/operations" style={{ textDecoration: 'none', position: 'relative', zIndex: 1 }}>
@@ -56,7 +69,7 @@ export function AgencyDashboard() {
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(109,61,230,0.5)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(109,61,230,0.3)' }}
           >
-            Continue setup →
+            {setupDone ? 'Review setup →' : 'Continue setup →'}
           </button>
         </Link>
       </div>

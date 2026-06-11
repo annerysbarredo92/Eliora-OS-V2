@@ -113,6 +113,103 @@ export interface DashboardMetrics {
   lead: number
 }
 
+/* ── Operations / Onboarding (Phase 03) ─────────────────── */
+export type SetupStepStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped'
+
+export interface AgencySetupStep {
+  id: string
+  agency_id: string
+  step_key: string
+  title: string
+  description: string | null
+  status: SetupStepStatus
+  sort_order: number
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AgencyOnboardingProgress {
+  id: string
+  agency_id: string
+  total_steps: number
+  completed_steps: number
+  completion_pct: number
+  readiness_score: number
+  skipped: boolean
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type BillingType = 'one_time' | 'monthly' | 'quarterly' | 'custom'
+
+export interface Service {
+  id: string
+  agency_id: string
+  name: string
+  category: string | null
+  description: string | null
+  price_cents: number
+  billing_type: BillingType
+  is_active: boolean
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type BillingFrequency = 'one_time' | 'monthly' | 'quarterly' | 'annual' | 'custom'
+
+export interface PackageService {
+  id: string
+  agency_id: string
+  package_id: string
+  service_id: string
+  created_at: string
+}
+
+export interface Package {
+  id: string
+  agency_id: string
+  name: string
+  description: string | null
+  price_cents: number
+  billing_frequency: BillingFrequency
+  is_active: boolean
+  is_default: boolean
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+  /** Embedded join rows via Supabase relationship select. */
+  package_services?: PackageService[]
+}
+
+export type TemplateType =
+  | 'proposal' | 'invoice' | 'report' | 'content' | 'onboarding' | 'task' | 'email'
+
+export interface Template {
+  id: string
+  agency_id: string
+  template_type: TemplateType
+  name: string
+  description: string | null
+  content: Record<string, unknown>
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface AgencyHealthScore {
+  id: string
+  agency_id: string
+  metric_key: string
+  score: number
+  details: Record<string, unknown>
+  updated_at: string
+}
+
 /* ── Navigation ─────────────────────────────────────────── */
 export interface NavItem {
   id: string

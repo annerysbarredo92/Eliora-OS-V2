@@ -1,170 +1,125 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
+import { useAuth } from '@/hooks/useAuth'
+import { useSetup, useServices, usePackages } from '@/features/operations/hooks'
+import { useClients } from '@/features/clients/hooks'
+import { logWorkspacePreview } from '@/features/operations/api'
+import { WorkspacePreviewModal } from '@/features/operations/components/WorkspacePreviewModal'
+import { OverviewTab } from './operations/OverviewTab'
+import { OnboardingTab } from './operations/OnboardingTab'
+import { ServicesTab } from './operations/ServicesTab'
+import { PackagesTab } from './operations/PackagesTab'
+import { TemplatesTab } from './operations/TemplatesTab'
+import { HealthTab } from './operations/HealthTab'
 
 const TABS = [
-  { id: 'onboarding',    label: 'Agency Onboarding' },
-  { id: 'services',      label: 'Services' },
-  { id: 'packages',      label: 'Packages' },
-  { id: 'templates',     label: 'Templates' },
-  { id: 'team',          label: 'Team Management' },
-  { id: 'automations',   label: 'Automations' },
-  { id: 'health',        label: 'Agency Health' },
-  { id: 'workspace',     label: 'Workspace Config' },
-]
-
-const ONBOARDING_STEPS = [
-  { id: 1, title: 'Agency Profile',       desc: 'Set up your agency name, logo, and branding.',        done: true },
-  { id: 2, title: 'Add Your First Client', desc: 'Create a client profile and send a portal invite.',   done: false },
-  { id: 3, title: 'Define Your Services',  desc: 'Add the services and packages you offer.',            done: false },
-  { id: 4, title: 'Invite Your Team',      desc: 'Add team members and assign roles.',                  done: false },
-  { id: 5, title: 'Customize Templates',   desc: 'Set up contract, proposal, and report templates.',    done: false },
+  { id: 'overview',     label: 'Overview' },
+  { id: 'onboarding',   label: 'Onboarding' },
+  { id: 'services',     label: 'Services' },
+  { id: 'packages',     label: 'Packages' },
+  { id: 'templates',    label: 'Templates' },
+  { id: 'health',       label: 'Agency Health' },
+  { id: 'automations',  label: 'Automations',  locked: true },
+  { id: 'team',         label: 'Team',         locked: true },
+  { id: 'integrations', label: 'Integrations', locked: true },
 ]
 
 export function AgencyOperations() {
   const { tab: urlTab } = useParams<{ tab?: string }>()
-  const [activeTab, setActiveTab] = useState(urlTab || 'onboarding')
+  const { profile } = useAuth()
+
+  const [activeTab, setActiveTab] = useState(urlTab && TABS.some(t => t.id === urlTab) ? urlTab : 'overview')
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [serviceSignal, setServiceSignal] = useState(0)
+  const [packageSignal, setPackageSignal] = useState(0)
+
+  const agencyId = profile?.agency_id ?? null
+  const ctx = profile?.agency_id && profile?.id ? { agencyId: profile.agency_id, actorId: profile.id } : null
+
+  const setup = useSetup(agencyId)
+  const svc = useServices()
+  const pkg = usePackages()
+  const clients = useClients()
+
+  if (!ctx) {
+    return (
+      <div className="animate-fade-up" style={{ padding: '40px 0' }}>
+        <p style={{ fontSize: 14, color: 'var(--muted)' }}>No agency workspace found for your account.</p>
+      </div>
+    )
+  }
+
+  const onboardingChanged = () => setup.refresh()
+  const servicesChanged = async () => { await svc.refresh(); await setup.refresh() }
+  const packagesChanged = async () => { await pkg.refresh(); await setup.refresh() }
+
+  function openPreview() {
+    if (ctx) logWorkspacePreview(ctx)
+    setPreviewOpen(true)
+  }
 
   return (
     <div className="animate-fade-up">
-      <div style={{ marginBottom: 'var(--space-6)' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)', marginBottom: 6 }}>
-          Operations Hub
-        </h1>
-        <p style={{ fontSize: '13.5px', color: 'var(--muted)' }}>
-          Your agency configuration, SOPs, and operational infrastructure.
-        </p>
+      {/* Header */}
+      <div style={{ marginBottom: 22 }}>
+        <h1 style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)', marginBottom: 4 }}>Operations Hub</h1>
+        <p style={{ fontSize: 13, color: 'var(--muted)' }}>Set up and run your agency — onboarding, services, packages, and more.</p>
       </div>
 
-      {/* Tab bar */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '2px',
-          borderBottom: '1px solid var(--hairline)',
-          marginBottom: 'var(--space-6)',
-          overflowX: 'auto',
-        }}
-      >
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '12px 16px',
-              fontSize: '13.5px',
-              fontWeight: activeTab === tab.id ? 600 : 400,
-              color: activeTab === tab.id ? 'var(--violet)' : 'var(--ink-2)',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid var(--violet)' : '2px solid transparent',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              transition: 'all 120ms ease',
-              marginBottom: '-1px',
-              fontFamily: 'var(--font-sans)',
-              letterSpacing: '-0.01em',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Onboarding tab content */}
-      {activeTab === 'onboarding' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <div
-            style={{
-              background: 'var(--lavender-soft)',
-              border: '1px solid var(--hairline)',
-              borderRadius: 'var(--radius)',
-              padding: 'var(--space-5)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <div>
-              <p style={{ fontSize: '11.5px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--violet)', marginBottom: 6 }}>
-                Readiness Score
-              </p>
-              <p style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--ink)' }}>
-                20%
-              </p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--ink-3)', marginBottom: 'var(--space-1)' }}>1 of 5 steps complete</p>
-              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--ink-5)' }}>Complete all steps to unlock full functionality</p>
-            </div>
-          </div>
-
-          {ONBOARDING_STEPS.map(step => (
-            <Card
-              key={step.id}
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--hairline)', marginBottom: 22, overflowX: 'auto' }}>
+        {TABS.map(t => {
+          const active = activeTab === t.id
+          return (
+            <button
+              key={t.id}
+              onClick={() => !t.locked && setActiveTab(t.id)}
+              disabled={t.locked}
+              title={t.locked ? 'Coming in a later phase' : undefined}
               style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 'var(--space-4)',
-                opacity: step.done ? 0.7 : 1,
+                padding: '10px 14px', fontSize: 13, fontFamily: 'var(--font-sans)',
+                fontWeight: active ? 600 : 400,
+                color: t.locked ? 'var(--muted)' : active ? 'var(--violet)' : 'var(--ink-2)',
+                background: 'none', border: 'none', cursor: t.locked ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap', borderBottom: active ? '2px solid var(--violet)' : '2px solid transparent',
+                marginBottom: -1, letterSpacing: '-0.01em', display: 'inline-flex', alignItems: 'center', gap: 6,
               }}
             >
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 'var(--radius-full)',
-                  background: step.done ? 'var(--success)' : 'var(--surface-3)',
-                  border: `2px solid ${step.done ? 'var(--success)' : 'var(--hairline)'}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  color: step.done ? 'white' : 'var(--ink-4)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                }}
-              >
-                {step.done ? '✓' : step.id}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
-                  <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--ink)' }}>{step.title}</p>
-                  {step.done && <Badge variant="success">Complete</Badge>}
-                </div>
-                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--ink-4)' }}>{step.desc}</p>
-              </div>
-              {!step.done && (
-                <button
-                  style={{
-                    flexShrink: 0,
-                    padding: 'var(--space-1) var(--space-3)',
-                    borderRadius: 'var(--radius)',
-                    background: 'var(--lavender-soft)',
-                    border: '1px solid var(--hairline)',
-                    color: 'var(--violet)',
-                    fontSize: 'var(--text-xs)',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Start →
-                </button>
-              )}
-            </Card>
-          ))}
-        </div>
+              {t.label}
+              {t.locked && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Content */}
+      {activeTab === 'overview' && (
+        <OverviewTab
+          progress={setup.progress}
+          steps={setup.steps}
+          services={svc.services}
+          packages={pkg.packages}
+          onContinue={() => setActiveTab('onboarding')}
+          onCreateService={() => { setActiveTab('services'); setServiceSignal(n => n + 1) }}
+          onCreatePackage={() => { setActiveTab('packages'); setPackageSignal(n => n + 1) }}
+          onPreview={openPreview}
+        />
+      )}
+      {activeTab === 'onboarding' && (
+        <OnboardingTab steps={setup.steps} progress={setup.progress} ctx={ctx} onChanged={onboardingChanged} />
+      )}
+      {activeTab === 'services' && (
+        <ServicesTab services={svc.services} loading={svc.loading} ctx={ctx} onChanged={servicesChanged} openSignal={serviceSignal} />
+      )}
+      {activeTab === 'packages' && (
+        <PackagesTab packages={pkg.packages} services={svc.services} loading={pkg.loading} ctx={ctx} onChanged={packagesChanged} openSignal={packageSignal} />
+      )}
+      {activeTab === 'templates' && <TemplatesTab />}
+      {activeTab === 'health' && (
+        <HealthTab progress={setup.progress} services={svc.services} packages={pkg.packages} clientCount={clients.metrics.total} />
       )}
 
-      {/* Other tabs — placeholder */}
-      {activeTab !== 'onboarding' && (
-        <Card>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--ink-4)', textAlign: 'center', padding: 'var(--space-10) 0' }}>
-            {TABS.find(t => t.id === activeTab)?.label} — coming in Phase 03
-          </p>
-        </Card>
-      )}
+      <WorkspacePreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} />
     </div>
   )
 }
