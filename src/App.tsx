@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { router } from '@/app/router'
+import { AuthProvider } from '@/app/AuthProvider'
 import { AppLoader } from '@/components/brand/AppLoader'
 
 export default function App() {
@@ -10,5 +11,9 @@ export default function App() {
     return <AppLoader onComplete={() => setReady(true)} />
   }
 
-  return <RouterProvider router={router} />
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  )
 }

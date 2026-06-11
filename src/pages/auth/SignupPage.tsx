@@ -13,6 +13,7 @@ export function SignupPage() {
   const [email,      setEmail]      = useState('')
   const [password,   setPassword]   = useState('')
   const [loading,    setLoading]    = useState(false)
+  const [status,     setStatus]     = useState<string | null>(null)
   const [error,      setError]      = useState<string | null>(null)
   const [notice,     setNotice]     = useState<string | null>(null)
 
@@ -21,6 +22,7 @@ export function SignupPage() {
     setLoading(true)
     setError(null)
     setNotice(null)
+    setStatus('Creating your workspace…')
 
     const { data, error: signupError } = await supabase.auth.signUp({
       email,
@@ -36,6 +38,7 @@ export function SignupPage() {
 
     if (signupError) {
       setError(signupError.message)
+      setStatus(null)
       setLoading(false)
       return
     }
@@ -44,23 +47,27 @@ export function SignupPage() {
     // Don't bounce the user into the app (which would redirect to login).
     if (!data.session || !data.user) {
       setNotice('Account created. Check your email to confirm, then sign in.')
+      setStatus(null)
       setLoading(false)
       return
     }
 
     // Confirm the auth trigger created the agency + profile before entering
     // the app. Retries cover the brief commit/visibility window.
+    setStatus('Setting up your agency…')
     const profile = await fetchProfile(data.user.id, 5)
     if (!profile) {
       setError(
         'Your account was created but the workspace could not be loaded. ' +
         'Please try signing in.'
       )
+      setStatus(null)
       setLoading(false)
       return
     }
 
-    navigate('/agency', { replace: true })
+    setStatus('Taking you to your workspace…')
+    navigate('/agency/dashboard', { replace: true })
   }
 
   return (
@@ -122,7 +129,7 @@ export function SignupPage() {
         )}
 
         <Button type="submit" variant="primary" size="lg" loading={loading} fullWidth style={{ marginTop: 4 }}>
-          Create workspace
+          {status || 'Create workspace'}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
             <path d="M5 12h14M13 6l6 6-6 6"/>
           </svg>
