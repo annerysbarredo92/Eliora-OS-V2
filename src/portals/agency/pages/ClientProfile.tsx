@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import type { ClientOnboardingProgress } from '@/types'
 import { useAuth } from '@/hooks/useAuth'
 import { useClient } from '@/features/clients/hooks'
 import { useActivity } from '@/features/activity/hooks'
+import { useAgencyOnboarding } from '@/features/onboarding/hooks'
+import { readProgress, statusLabel as obStatusLabel, statusBadge as obStatusBadge } from '@/features/onboarding/helpers'
+import { logAgencyViewedOnboarding } from '@/features/onboarding/api'
+import { AgencyOnboardingView } from '@/features/onboarding/components/AgencyOnboardingView'
 import {
   updateClient, archiveClient, clientToFormValues,
 } from '@/features/clients/api'
@@ -12,7 +15,7 @@ import {
   HEALTH_LABEL, relativeTime,
 } from '@/features/clients/helpers'
 import { ClientFormModal } from '@/features/clients/components/ClientFormModal'
-import { getOnboarding, enablePortal } from '@/features/portal/api'
+import { enablePortal } from '@/features/portal/api'
 import { ActivityFeed } from '@/features/activity/ActivityFeed'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -21,12 +24,12 @@ import type { ClientFormValues } from '@/features/clients/api'
 
 const TABS = [
   { id: 'overview',   label: 'Overview',   live: true },
+  { id: 'onboarding', label: 'Onboarding', live: true },
   { id: 'content',    label: 'Content',    live: false },
   { id: 'files',      label: 'Files',      live: false },
   { id: 'reports',    label: 'Reports',    live: false },
   { id: 'billing',    label: 'Billing',    live: false },
   { id: 'messages',   label: 'Messages',   live: false },
-  { id: 'onboarding', label: 'Onboarding', live: false },
   { id: 'activity',   label: 'Activity',   live: true },
   { id: 'settings',   label: 'Settings',   live: true },
 ]
@@ -41,16 +44,23 @@ export function AgencyClientProfile() {
   const [editing, setEditing]   = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiving, setArchiving] = useState(false)
-  const [portalProgress, setPortalProgress] = useState<ClientOnboardingProgress | null>(null)
   const [enabling, setEnabling] = useState(false)
+  const [viewedLogged, setViewedLogged] = useState(false)
+
+  const agencyOb = useAgencyOnboarding(clientId)
+  const obStats = readProgress(agencyOb.progress)
 
   const ctx = profile?.agency_id && profile?.id
     ? { agencyId: profile.agency_id, actorId: profile.id }
     : null
 
+  // Log (once) when an agency user opens the onboarding tab.
   useEffect(() => {
-    if (clientId) getOnboarding(clientId).then(setPortalProgress)
-  }, [clientId])
+    if (tab === 'onboarding' && !viewedLogged && ctx && clientId) {
+      logAgencyViewedOnboarding(ctx.agencyId, ctx.actorId, clientId)
+      setViewedLogged(true)
+    }
+  }, [tab, viewedLogged, ctx, clientId])
 
   async function handleEnablePortal() {
     if (!ctx || !client) return
@@ -59,7 +69,7 @@ export function AgencyClientProfile() {
       await enablePortal(client.id, ctx)
       await refresh()
       await activity.refresh()
-      setPortalProgress(await getOnboarding(client.id))
+      await agencyOb.refresh()
     } finally {
       setEnabling(false)
     }
@@ -203,22 +213,41 @@ export function AgencyClientProfile() {
               </div>
               <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>Client onboarding</span>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--violet)' }}>{portalProgress?.completion_pct ?? 0}%</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Badge variant={obStatusBadge(obStats.status)}>{obStatusLabel(obStats.status)}</Badge>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--violet)' }}>{obStats.pct}%</span>
+                </span>
               </div>
               <div style={{ height: 6, background: 'var(--lavender-soft)', borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{ width: `${portalProgress?.completion_pct ?? 0}%`, height: '100%', background: 'linear-gradient(90deg,#6D3DE6,#9258EE)', borderRadius: 999, transition: 'width 400ms ease' }} />
+                <div style={{ width: `${obStats.pct}%`, height: '100%', background: 'linear-gradient(90deg,#6D3DE6,#9258EE)', borderRadius: 999, transition: 'width 400ms ease' }} />
               </div>
               <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10, lineHeight: 1.5 }}>
-                {client.portal_enabled
-                  ? 'Your client can sign in to complete onboarding and manage their details.'
-                  : 'Enable the portal to provision your client’s workspace.'}
+                {obStats.missing.length > 0
+                  ? `${obStats.missing.length} item${obStats.missing.length === 1 ? '' : 's'} outstanding · updated ${relativeTime(obStats.lastSaved)}`
+                  : client.portal_enabled
+                    ? 'Your client can sign in to complete onboarding and manage their details.'
+                    : 'Enable the portal to provision your client’s workspace.'}
               </p>
+              <div style={{ marginTop: 12 }}>
+                <Button variant="ghost" size="sm" onClick={() => setTab('onboarding')}>View onboarding →</Button>
+              </div>
             </Panel>
             <Panel title="Recent Activity">
               <ActivityFeed items={activity.items.slice(0, 8)} loading={activity.loading} />
             </Panel>
           </div>
         </div>
+      )}
+
+      {tab === 'onboarding' && (
+        <AgencyOnboardingView
+          template={agencyOb.template}
+          responses={agencyOb.responses}
+          progress={agencyOb.progress}
+          requiredItems={agencyOb.requiredItems}
+          activity={agencyOb.activity}
+          loading={agencyOb.loading}
+        />
       )}
 
       {tab === 'activity' && (
@@ -242,7 +271,7 @@ export function AgencyClientProfile() {
         </Panel>
       )}
 
-      {!['overview', 'activity', 'settings'].includes(tab) && (
+      {!['overview', 'onboarding', 'activity', 'settings'].includes(tab) && (
         <Panel title={TABS.find(t => t.id === tab)?.label ?? ''}>
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <Badge variant="default" style={{ marginBottom: 12 }}>Coming soon</Badge>

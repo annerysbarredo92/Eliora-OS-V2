@@ -114,7 +114,7 @@ export function AgencyOperations() {
       {activeTab === 'packages' && (
         <PackagesTab packages={pkg.packages} services={svc.services} loading={pkg.loading} ctx={ctx} onChanged={packagesChanged} openSignal={packageSignal} />
       )}
-      {activeTab === 'templates' && <TemplatesTab />}
+      {activeTab === 'templates' && <TemplatesTab agencyId={agencyId} />}
       {activeTab === 'health' && (
         <HealthTab progress={setup.progress} services={svc.services} packages={pkg.packages} clientCount={clients.metrics.total} />
       )}

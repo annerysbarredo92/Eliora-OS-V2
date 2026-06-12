@@ -267,6 +267,100 @@ export interface ClientOnboardingProgress {
   updated_at: string
 }
 
+/* ── Onboarding system (Phase 05) ───────────────────────── */
+export type OnboardingQuestionType =
+  | 'text' | 'textarea' | 'url' | 'email' | 'phone' | 'number'
+  | 'select' | 'multiselect' | 'social' | 'upload'
+
+export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed' | 'submitted'
+
+export interface OnboardingQuestion {
+  id: string
+  agency_id: string
+  template_id: string
+  section_id: string
+  key: string
+  label: string
+  help_text: string | null
+  question_type: OnboardingQuestionType
+  options: string[]
+  is_required: boolean
+  sort_order: number
+}
+
+export interface OnboardingSection {
+  id: string
+  agency_id: string
+  template_id: string
+  key: string
+  title: string
+  description: string | null
+  sort_order: number
+  questions: OnboardingQuestion[]
+}
+
+export interface OnboardingTemplate {
+  id: string
+  agency_id: string
+  name: string
+  description: string | null
+  is_default: boolean
+  is_active: boolean
+  sections: OnboardingSection[]
+}
+
+export interface OnboardingResponse {
+  id: string
+  client_id: string
+  question_id: string
+  value: unknown
+}
+
+export interface OnboardingMissingItem {
+  section: string
+  label: string
+}
+
+export interface OnboardingProgress {
+  id: string
+  agency_id: string
+  client_id: string
+  template_id: string | null
+  status: OnboardingStatus
+  sections: Record<string, boolean>
+  completion_pct: number
+  total_sections: number
+  completed_sections: number
+  missing_items: OnboardingMissingItem[]
+  started_at: string | null
+  last_saved_at: string | null
+  submitted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OnboardingRequiredItem {
+  id: string
+  agency_id: string
+  client_id: string
+  key: string
+  label: string
+  is_provided: boolean
+  provided_at: string | null
+  sort_order: number
+}
+
+export interface OnboardingActivity {
+  id: string
+  agency_id: string
+  client_id: string | null
+  actor_profile_id: string | null
+  action: string
+  description: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
 /* ── Navigation ─────────────────────────────────────────── */
 export interface NavItem {
   id: string

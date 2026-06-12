@@ -1,20 +1,25 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useClientPortal } from '@/features/portal/hooks'
+import { useClientOnboarding } from '@/features/onboarding/hooks'
+import { readProgress, statusLabel } from '@/features/onboarding/helpers'
 import { useActivity } from '@/features/activity/hooks'
 import { ActivityFeed } from '@/features/activity/ActivityFeed'
 import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
 
 export function ClientDashboard() {
   const { profile: user } = useAuth()
   const portal = useClientPortal(user)
+  const ob = useClientOnboarding(user)
   const activity = useActivity({ clientId: user?.client_id ?? undefined, limit: 8 })
 
   const companyName = portal.profile?.company_name || 'your workspace'
   const agencyName = portal.agency?.name || 'your agency'
   const firstName = (portal.profile?.contact_name || user?.display_name || '').split(' ')[0] || 'there'
-  const completion = portal.onboarding?.completion_pct ?? 0
-  const onboardingDone = completion >= 100
+
+  const { pct: completion, status, missing } = readProgress(ob.progress)
+  const onboardingDone = status === 'submitted'
 
   return (
     <div className="animate-fade-up">
@@ -27,6 +32,20 @@ export function ClientDashboard() {
           {companyName} · managed by {agencyName}
         </p>
       </div>
+
+      {/* Persistent onboarding reminder */}
+      {!onboardingDone && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', background: 'var(--lavender-soft)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', padding: '14px 18px', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--violet)', flexShrink: 0 }} />
+            <span style={{ fontSize: 13.5, color: 'var(--ink-2)' }}>
+              Your onboarding is <strong style={{ color: 'var(--ink)' }}>{completion}% complete</strong>
+              {missing.length > 0 ? ` · ${missing.length} item${missing.length === 1 ? '' : 's'} need attention` : ''}.
+            </span>
+          </div>
+          <Link to="/portal/onboarding" style={{ textDecoration: 'none' }}><Button variant="primary" size="sm">Continue onboarding</Button></Link>
+        </div>
+      )}
 
       {/* Top row: portal status + onboarding */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 22 }}>
@@ -49,7 +68,7 @@ export function ClientDashboard() {
             <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginBottom: 10 }}>Onboarding</p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
               <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', color: '#fff' }}>{completion}%</span>
-              <span style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.5)' }}>{onboardingDone ? 'complete' : 'complete'}</span>
+              <span style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.5)' }}>{statusLabel(status)}{missing.length > 0 ? ` · ${missing.length} missing` : ''}</span>
             </div>
             <div style={{ height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 999, overflow: 'hidden', marginBottom: 14 }}>
               <div style={{ width: `${completion}%`, height: '100%', background: 'linear-gradient(90deg,#6D3DE6,#F2CE5B)', borderRadius: 999, transition: 'width 400ms ease' }} />
