@@ -377,3 +377,139 @@ export interface ApiResult<T> {
   error: string | null
   ok: boolean
 }
+
+/* ── Wave 1: Content (Phase 06/09) ──────────────────────── */
+export type ContentType = 'static_post' | 'carousel' | 'reel' | 'story' | 'video' | 'blog' | 'email' | 'custom'
+export type ContentPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin' | 'pinterest' | 'youtube' | 'google_business' | 'custom'
+export type ContentStatus = 'draft' | 'internal_review' | 'client_review' | 'approved' | 'revision_requested' | 'rejected' | 'scheduled' | 'published' | 'archived'
+export type ContentApprovalAction = 'approve' | 'request_changes' | 'reject' | 'comment'
+export type FileOwnerRole = 'agency' | 'client'
+
+export interface ContentItem {
+  id: string
+  agency_id: string
+  client_id: string
+  title: string
+  content_type: ContentType
+  platform: ContentPlatform
+  campaign: string | null
+  caption: string | null
+  cta: string | null
+  hashtags: string | null
+  scheduled_date: string | null
+  status: ContentStatus
+  internal_notes: string | null
+  client_notes: string | null
+  comment_count: number
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ContentComment {
+  id: string
+  agency_id: string
+  client_id: string
+  content_id: string
+  author_id: string | null
+  author_role: FileOwnerRole
+  body: string
+  is_internal: boolean
+  created_at: string
+}
+
+export interface ContentApproval {
+  id: string
+  agency_id: string
+  client_id: string
+  content_id: string
+  action: ContentApprovalAction
+  note: string | null
+  actor_id: string | null
+  created_at: string
+}
+
+export interface ContentAsset {
+  id: string
+  agency_id: string
+  client_id: string
+  content_id: string
+  file_id: string | null
+  storage_path: string | null
+  file_name: string | null
+  mime_type: string | null
+  created_at: string
+}
+
+/* ── Wave 1: Files (Phase 07) ───────────────────────────── */
+export interface AssetFolder {
+  id: string
+  agency_id: string
+  client_id: string
+  name: string
+  is_default: boolean
+  sort_order: number
+  created_at: string
+}
+
+export interface ClientAsset {
+  id: string
+  agency_id: string
+  client_id: string
+  folder_id: string | null
+  name: string
+  storage_path: string
+  mime_type: string | null
+  size_bytes: number
+  owner_role: FileOwnerRole
+  is_client_visible: boolean
+  internal_notes: string | null
+  is_archived: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface FileRequest {
+  id: string
+  agency_id: string
+  client_id: string
+  title: string
+  description: string | null
+  status: 'open' | 'completed' | 'cancelled'
+  created_at: string
+}
+
+/* ── Wave 1: Reports (Phase 08) ─────────────────────────── */
+export interface Report {
+  id: string
+  agency_id: string
+  client_id: string
+  title: string
+  period_label: string | null
+  description: string | null
+  storage_path: string | null
+  file_name: string | null
+  mime_type: string | null
+  size_bytes: number
+  is_client_visible: boolean
+  status: 'active' | 'archived'
+  internal_notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Notification {
+  id: string
+  agency_id: string
+  recipient_profile_id: string
+  client_id: string | null
+  type: string
+  title: string
+  body: string | null
+  entity_type: string | null
+  entity_id: string | null
+  is_read: boolean
+  created_at: string
+}

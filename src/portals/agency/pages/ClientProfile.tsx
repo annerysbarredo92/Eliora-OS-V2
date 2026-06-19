@@ -7,6 +7,9 @@ import { useAgencyOnboarding } from '@/features/onboarding/hooks'
 import { readProgress, statusLabel as obStatusLabel, statusBadge as obStatusBadge } from '@/features/onboarding/helpers'
 import { logAgencyViewedOnboarding } from '@/features/onboarding/api'
 import { AgencyOnboardingView } from '@/features/onboarding/components/AgencyOnboardingView'
+import { ClientContentPanel } from '@/features/content/components/ClientContentPanel'
+import { ClientFilesPanel } from '@/features/files/components/ClientFilesPanel'
+import { ClientReportsPanel } from '@/features/reports/components/ClientReportsPanel'
 import {
   updateClient, archiveClient, clientToFormValues,
 } from '@/features/clients/api'
@@ -25,11 +28,9 @@ import type { ClientFormValues } from '@/features/clients/api'
 const TABS = [
   { id: 'overview',   label: 'Overview',   live: true },
   { id: 'onboarding', label: 'Onboarding', live: true },
-  { id: 'content',    label: 'Content',    live: false },
-  { id: 'files',      label: 'Files',      live: false },
-  { id: 'reports',    label: 'Reports',    live: false },
-  { id: 'billing',    label: 'Billing',    live: false },
-  { id: 'messages',   label: 'Messages',   live: false },
+  { id: 'content',    label: 'Content',    live: true },
+  { id: 'files',      label: 'Files',      live: true },
+  { id: 'reports',    label: 'Reports',    live: true },
   { id: 'activity',   label: 'Activity',   live: true },
   { id: 'settings',   label: 'Settings',   live: true },
 ]
@@ -250,6 +251,24 @@ export function AgencyClientProfile() {
         />
       )}
 
+      {tab === 'content' && ctx && (
+        <Panel title="Content">
+          <ClientContentPanel client={client} ctx={{ agencyId: ctx.agencyId, actorId: ctx.actorId, role: 'agency' }} />
+        </Panel>
+      )}
+
+      {tab === 'files' && ctx && (
+        <Panel title="Files & Deliverables">
+          <ClientFilesPanel ctx={{ agencyId: ctx.agencyId, clientId: client.id, actorId: ctx.actorId, role: 'agency' }} />
+        </Panel>
+      )}
+
+      {tab === 'reports' && ctx && (
+        <Panel title="Reports">
+          <ClientReportsPanel client={client} ctx={{ agencyId: ctx.agencyId, actorId: ctx.actorId }} />
+        </Panel>
+      )}
+
       {tab === 'activity' && (
         <Panel title="Activity">
           <ActivityFeed items={activity.items} loading={activity.loading} emptyLabel="No activity recorded for this client yet." />
@@ -271,7 +290,7 @@ export function AgencyClientProfile() {
         </Panel>
       )}
 
-      {!['overview', 'onboarding', 'activity', 'settings'].includes(tab) && (
+      {!['overview', 'onboarding', 'content', 'files', 'reports', 'activity', 'settings'].includes(tab) && (
         <Panel title={TABS.find(t => t.id === tab)?.label ?? ''}>
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <Badge variant="default" style={{ marginBottom: 12 }}>Coming soon</Badge>
