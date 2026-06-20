@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { fetchProfile } from '@/lib/auth'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { GoogleButton } from '@/components/auth/GoogleButton'
 
 export function SignupPage() {
   const navigate = useNavigate()
@@ -78,6 +79,11 @@ export function SignupPage() {
       <p style={{ fontSize: 15.5, color: 'var(--ink-2)', marginBottom: 28 }}>
         Start your 14-day free trial. No credit card required.
       </p>
+
+      <div style={{ marginBottom: 16 }}><GoogleButton label="Sign up with Google" /></div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '4px 0 18px', color: 'var(--muted)', fontSize: '12.5px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <span style={{ flex: 1, height: 1, background: 'var(--hairline)' }} />or<span style={{ flex: 1, height: 1, background: 'var(--hairline)' }} />
+      </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
         <Input

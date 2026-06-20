@@ -1,11 +1,16 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useClients } from '@/features/clients/hooks'
 import { useActivity } from '@/features/activity/hooks'
 import { useSetup } from '@/features/operations/hooks'
+import { supabase } from '@/lib/supabase'
+import { money } from '@/features/operations/helpers'
+import { computeBillingMetrics } from '@/features/billing/api'
 import { ActivityFeed } from '@/features/activity/ActivityFeed'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { Card } from '@/components/ui/Card'
+import type { Invoice } from '@/types'
 
 export function AgencyDashboard() {
   const { profile } = useAuth()
@@ -13,6 +18,22 @@ export function AgencyDashboard() {
   const activity = useActivity({ limit: 8 })
   const setup = useSetup(profile?.agency_id ?? null)
   const firstName = profile?.display_name?.split(' ')[0] || 'there'
+
+  const [ops, setOps] = useState({ leads: 0 as number | string, proposals: 0 as number | string, requests: 0 as number | string, notifs: 0 as number | string, outstanding: '—' as number | string })
+  useEffect(() => {
+    (async () => {
+      // Each query is independent; a missing table (SQL not yet applied) just leaves 0.
+      const [leads, proposals, requests, notifs, invoices] = await Promise.all([
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+        supabase.from('proposals').select('id', { count: 'exact', head: true }).in('status', ['sent', 'viewed']),
+        supabase.from('client_requests').select('id', { count: 'exact', head: true }).in('status', ['submitted', 'in_review', 'in_progress']),
+        supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('is_read', false),
+        supabase.from('invoices').select('*').limit(500),
+      ])
+      const m = computeBillingMetrics((invoices.data ?? []) as Invoice[])
+      setOps({ leads: leads.count ?? 0, proposals: proposals.count ?? 0, requests: requests.count ?? 0, notifs: notifs.count ?? 0, outstanding: money(m.outstanding) })
+    })()
+  }, [])
 
   const completion = setup.progress?.completion_pct ?? 0
   const completedSteps = setup.progress?.completed_steps ?? 0
@@ -83,13 +104,14 @@ export function AgencyDashboard() {
         <KpiCard label="Total Clients"      value={loading ? '—' : metrics.total}      accent="violet" hint={<Link to="/agency/clients" style={{ color: 'var(--violet)', textDecoration: 'none', fontWeight: 600 }}>Open Client Center →</Link>} />
       </div>
 
-      {/* Placeholder metrics (later phases) */}
-      <p style={kicker}>Operations <span style={{ color: 'var(--muted)', textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>· coming in later phases</span></p>
+      {/* Sales & operations (real Wave 2/3 data) */}
+      <p style={kicker}>Sales & Operations</p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 24 }}>
-        <KpiCard label="Pending Approvals"   value="—" accent="muted" placeholder />
-        <KpiCard label="Upcoming Content"    value="—" accent="muted" placeholder />
-        <KpiCard label="Outstanding Revenue" value="—" accent="muted" placeholder />
-        <KpiCard label="Open Tasks"          value="—" accent="muted" placeholder />
+        <KpiCard label="Open Leads"        value={ops.leads}    accent="violet" hint={<Link to="/agency/pipeline" style={{ color: 'var(--violet)', textDecoration: 'none', fontWeight: 600 }}>Open pipeline →</Link>} />
+        <KpiCard label="Active Proposals"  value={ops.proposals} accent="gold" />
+        <KpiCard label="Client Requests"   value={ops.requests} accent="success" hint={ops.requests ? 'pending' : undefined} />
+        <KpiCard label="Unread Notifs"     value={ops.notifs}   accent="muted" hint={<Link to="/agency/notifications" style={{ color: 'var(--violet)', textDecoration: 'none', fontWeight: 600 }}>View →</Link>} />
+        <KpiCard label="Outstanding"       value={ops.outstanding} accent="violet" />
       </div>
 
       {/* Recent activity */}

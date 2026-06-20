@@ -588,3 +588,27 @@ export interface ClientRequest {
   status: RequestStatus; assignee_id: string | null; created_by: string | null; created_at: string; updated_at: string
 }
 export interface RequestComment { id: string; agency_id: string; client_id: string; request_id: string; author_id: string | null; author_role: FileOwnerRole; body: string; created_at: string }
+
+/* ── Wave 3: Billing ────────────────────────────────────── */
+export type InvoiceStatus = 'draft' | 'sent' | 'viewed' | 'partially_paid' | 'paid' | 'overdue' | 'void' | 'archived'
+export type PaymentMethod = 'credit_card' | 'ach' | 'bank_transfer' | 'manual'
+export interface Invoice {
+  id: string; agency_id: string; client_id: string; proposal_id: string | null
+  number: string | null; title: string | null; status: InvoiceStatus; is_recurring: boolean; recurrence: string | null
+  subtotal_cents: number; tax_cents: number; total_cents: number; amount_paid_cents: number; deposit_cents: number
+  due_date: string | null; issued_at: string | null; paid_at: string | null; notes: string | null
+  is_client_visible: boolean; created_at: string; updated_at: string
+}
+export interface InvoiceItem { id: string; agency_id: string; client_id: string; invoice_id: string; name: string; description: string | null; quantity: number; unit_price_cents: number; sort_order: number }
+export interface Payment { id: string; agency_id: string; client_id: string; invoice_id: string | null; amount_cents: number; method: PaymentMethod; note: string | null; recorded_at: string }
+
+/* ── Wave 3: Performance, KPIs, Calendar, Tasks ─────────── */
+export interface ContentMetrics { id: string; agency_id: string; client_id: string; content_id: string; views: number; reach: number; engagement: number; clicks: number; likes: number; comments: number; shares: number; saves: number; recorded_at: string }
+export type GoalStatus = 'on_track' | 'at_risk' | 'achieved' | 'missed'
+export interface Kpi { id: string; agency_id: string; client_id: string | null; name: string; metric_key: string | null; target_value: number; current_value: number; unit: string | null; period: string; is_client_visible: boolean; created_at: string }
+export interface Goal { id: string; agency_id: string; client_id: string | null; title: string; target_value: number; current_value: number; due_date: string | null; status: GoalStatus; is_client_visible: boolean; created_at: string }
+export type CalendarEventType = 'content' | 'discovery_call' | 'client_meeting' | 'internal_meeting' | 'deadline' | 'invoice_due' | 'proposal_expiration' | 'task'
+export interface CalendarEvent { id: string; agency_id: string; client_id: string | null; title: string; type: CalendarEventType; start_at: string | null; end_at: string | null; all_day: boolean; is_client_visible: boolean; content_id: string | null; assigned_to: string[]; notes: string | null; created_at: string }
+export type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
+export interface Task { id: string; agency_id: string; client_id: string | null; title: string; description: string | null; status: TaskStatus; priority: TaskPriority; due_date: string | null; assigned_to: string | null; created_by: string | null; created_at: string; updated_at: string }
