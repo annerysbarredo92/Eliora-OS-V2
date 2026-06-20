@@ -10,6 +10,7 @@ import { AgencyOnboardingView } from '@/features/onboarding/components/AgencyOnb
 import { ClientContentPanel } from '@/features/content/components/ClientContentPanel'
 import { ClientFilesPanel } from '@/features/files/components/ClientFilesPanel'
 import { ClientReportsPanel } from '@/features/reports/components/ClientReportsPanel'
+import { MessageThread } from '@/features/messaging/components/MessageThread'
 import {
   updateClient, archiveClient, clientToFormValues,
 } from '@/features/clients/api'
@@ -31,6 +32,7 @@ const TABS = [
   { id: 'content',    label: 'Content',    live: true },
   { id: 'files',      label: 'Files',      live: true },
   { id: 'reports',    label: 'Reports',    live: true },
+  { id: 'messages',   label: 'Messages',   live: true },
   { id: 'activity',   label: 'Activity',   live: true },
   { id: 'settings',   label: 'Settings',   live: true },
 ]
@@ -269,6 +271,12 @@ export function AgencyClientProfile() {
         </Panel>
       )}
 
+      {tab === 'messages' && ctx && (
+        <Panel title="Messages">
+          <MessageThread clientId={client.id} ctx={{ agencyId: ctx.agencyId, clientId: client.id, actorId: ctx.actorId, role: 'agency' }} />
+        </Panel>
+      )}
+
       {tab === 'activity' && (
         <Panel title="Activity">
           <ActivityFeed items={activity.items} loading={activity.loading} emptyLabel="No activity recorded for this client yet." />
@@ -290,7 +298,7 @@ export function AgencyClientProfile() {
         </Panel>
       )}
 
-      {!['overview', 'onboarding', 'content', 'files', 'reports', 'activity', 'settings'].includes(tab) && (
+      {!['overview', 'onboarding', 'content', 'files', 'reports', 'messages', 'activity', 'settings'].includes(tab) && (
         <Panel title={TABS.find(t => t.id === tab)?.label ?? ''}>
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <Badge variant="default" style={{ marginBottom: 12 }}>Coming soon</Badge>

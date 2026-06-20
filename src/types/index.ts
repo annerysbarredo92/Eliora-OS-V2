@@ -513,3 +513,78 @@ export interface Notification {
   is_read: boolean
   created_at: string
 }
+
+/* ── Wave 2: Team & Permissions ─────────────────────────── */
+export interface PermissionSet {
+  id: string; agency_id: string; name: string; description: string | null
+  is_preset: boolean; permissions: Record<string, string[]>
+  created_at: string; updated_at: string
+}
+export type TeamMemberStatus = 'invited' | 'active' | 'deactivated'
+export interface TeamMembership {
+  id: string; agency_id: string; profile_id: string; title: string | null
+  status: TeamMemberStatus; permission_set_id: string | null
+  overrides: Record<string, unknown>; created_at: string; updated_at: string
+}
+export type TeamInviteStatus = 'pending' | 'accepted' | 'expired' | 'revoked'
+export interface TeamInvitation {
+  id: string; agency_id: string; email: string; role: UserRole; title: string | null
+  permission_set_id: string | null; token: string; status: TeamInviteStatus
+  invited_by: string | null; expires_at: string | null; accepted_at: string | null; created_at: string
+}
+
+/* ── Wave 2: Pipeline & Leads ───────────────────────────── */
+export interface PipelineStage {
+  id: string; agency_id: string; name: string; sort_order: number; probability: number; is_default: boolean
+}
+export type LeadStatus = 'open' | 'won' | 'lost' | 'archived'
+export interface Lead {
+  id: string; agency_id: string; name: string | null; business_name: string
+  email: string | null; phone: string | null; website: string | null; source: string | null
+  status: LeadStatus; stage_id: string | null; estimated_value_cents: number
+  owner_id: string | null; notes: string | null; converted_client_id: string | null
+  created_by: string | null; updated_by: string | null; created_at: string; updated_at: string
+}
+export interface LeadNote { id: string; agency_id: string; lead_id: string; author_id: string | null; body: string; created_at: string }
+export interface LeadActivity { id: string; agency_id: string; lead_id: string; actor_id: string | null; type: string; description: string | null; metadata: Record<string, unknown>; created_at: string }
+
+/* ── Wave 2: Proposals & Contracts ──────────────────────── */
+export type ProposalStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired' | 'archived'
+export interface Proposal {
+  id: string; agency_id: string; lead_id: string | null; client_id: string | null
+  title: string; status: ProposalStatus; total_cents: number; version: number
+  share_token: string | null; expires_at: string | null; sent_at: string | null
+  viewed_at: string | null; decided_at: string | null; created_by: string | null
+  created_at: string; updated_at: string
+}
+export interface ProposalSection { id: string; agency_id: string; proposal_id: string; kind: string; title: string; body: string | null; sort_order: number }
+export interface ProposalLineItem {
+  id: string; agency_id: string; proposal_id: string; service_id: string | null; package_id: string | null
+  name: string; description: string | null; quantity: number; unit_price_cents: number
+  billing_kind: 'one_time' | 'recurring'; sort_order: number
+}
+export type ContractStatus = 'draft' | 'sent' | 'signed' | 'declined' | 'expired' | 'archived'
+export interface ContractTemplate { id: string; agency_id: string; name: string; body: string | null; is_default: boolean; created_at: string; updated_at: string }
+export interface Contract {
+  id: string; agency_id: string; proposal_id: string | null; lead_id: string | null; client_id: string | null
+  template_id: string | null; title: string; body: string | null; status: ContractStatus
+  share_token: string | null; sent_at: string | null; signed_at: string | null; expires_at: string | null
+  created_by: string | null; created_at: string; updated_at: string
+}
+export interface ContractSignature { id: string; agency_id: string; contract_id: string; signer_name: string; signer_email: string | null; signature_text: string; is_client: boolean; signed_at: string }
+
+/* ── Wave 2: Portal settings, messaging, requests ───────── */
+export interface AgencyPortalSettings {
+  id: string; agency_id: string; enable_messaging: boolean; enable_content_requests: boolean
+  enable_file_uploads: boolean; enable_report_access: boolean; enable_invoice_access: boolean
+  auto_approval: boolean; created_at: string; updated_at: string
+}
+export interface MessageThread { id: string; agency_id: string; client_id: string; subject: string | null; status: string; last_message_at: string | null; created_at: string }
+export interface Message { id: string; agency_id: string; client_id: string; thread_id: string; author_id: string | null; author_role: FileOwnerRole; body: string; created_at: string }
+export type RequestType = 'content' | 'file' | 'campaign' | 'strategy' | 'support' | 'meeting'
+export type RequestStatus = 'submitted' | 'in_review' | 'in_progress' | 'waiting' | 'completed' | 'closed'
+export interface ClientRequest {
+  id: string; agency_id: string; client_id: string; type: RequestType; title: string; description: string | null
+  status: RequestStatus; assignee_id: string | null; created_by: string | null; created_at: string; updated_at: string
+}
+export interface RequestComment { id: string; agency_id: string; client_id: string; request_id: string; author_id: string | null; author_role: FileOwnerRole; body: string; created_at: string }

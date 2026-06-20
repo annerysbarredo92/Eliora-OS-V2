@@ -11,6 +11,7 @@ import { ServicesTab } from './operations/ServicesTab'
 import { PackagesTab } from './operations/PackagesTab'
 import { TemplatesTab } from './operations/TemplatesTab'
 import { HealthTab } from './operations/HealthTab'
+import { PortalSettingsTab } from './operations/PortalSettingsTab'
 
 const TABS = [
   { id: 'overview',     label: 'Overview' },
@@ -18,9 +19,9 @@ const TABS = [
   { id: 'services',     label: 'Services' },
   { id: 'packages',     label: 'Packages' },
   { id: 'templates',    label: 'Templates' },
+  { id: 'portal',       label: 'Client Portal Settings' },
   { id: 'health',       label: 'Agency Health' },
   { id: 'automations',  label: 'Automations',  locked: true },
-  { id: 'team',         label: 'Team',         locked: true },
   { id: 'integrations', label: 'Integrations', locked: true },
 ]
 
@@ -115,6 +116,7 @@ export function AgencyOperations() {
         <PackagesTab packages={pkg.packages} services={svc.services} loading={pkg.loading} ctx={ctx} onChanged={packagesChanged} openSignal={packageSignal} />
       )}
       {activeTab === 'templates' && <TemplatesTab agencyId={agencyId} />}
+      {activeTab === 'portal' && <PortalSettingsTab agencyId={agencyId} />}
       {activeTab === 'health' && (
         <HealthTab progress={setup.progress} services={svc.services} packages={pkg.packages} clientCount={clients.metrics.total} />
       )}
