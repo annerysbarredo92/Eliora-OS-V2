@@ -14,6 +14,7 @@ const NAV = [
   { path: '/agency/billing',       label: 'Billing'       },
   { path: '/agency/pipeline',      label: 'Pipeline'      },
   { path: '/agency/operations',    label: 'Operations'    },
+  { path: '/agency/ai',            label: 'AI Studio'     },
   { path: '/agency/team',          label: 'Team'          },
   { path: '/agency/notifications', label: 'Notifications' },
   { path: '/agency/settings',      label: 'Settings'      },

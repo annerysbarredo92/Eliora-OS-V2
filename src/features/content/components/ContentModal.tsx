@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
+import { useAuth } from '@/hooks/useAuth'
+import { AiBrief } from '@/features/ai/components/AiBrief'
 import { CONTENT_TYPE_OPTIONS, PLATFORM_OPTIONS } from '../helpers'
 import type { ContentFormValues } from '../api'
 import type { Client } from '@/types'
@@ -25,9 +27,12 @@ interface ContentModalProps {
 }
 
 export function ContentModal({ open, mode, initial, clients, lockedClientId, onClose, onSubmit }: ContentModalProps) {
+  const { profile } = useAuth()
   const [v, setV] = useState<ContentFormValues>(initial ?? empty(lockedClientId ?? ''))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [aiOpen, setAiOpen] = useState(false)
+  const aiCtx = profile?.agency_id && profile?.id ? { agencyId: profile.agency_id, actorId: profile.id, clientId: v.client_id || null } : null
 
   useEffect(() => {
     if (open) { setV(initial ?? empty(lockedClientId ?? clients[0]?.id ?? '')); setError(null) }
@@ -67,7 +72,18 @@ export function ContentModal({ open, mode, initial, clients, lockedClientId, onC
           <Input label="Campaign (optional)" value={v.campaign} onChange={e => set('campaign', e.target.value)} />
           <Input label="Scheduled date (optional)" type="datetime-local" value={v.scheduled_date} onChange={e => set('scheduled_date', e.target.value)} />
         </div>
-        <Textarea label="Caption" value={v.caption} onChange={e => set('caption', e.target.value)} rows={3} />
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-2)' }}>Caption</span>
+            {aiCtx && <button type="button" onClick={() => setAiOpen(o => !o)} style={{ background: 'none', border: 'none', color: 'var(--violet)', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>✦ {aiOpen ? 'Hide AI assist' : 'AI assist'}</button>}
+          </div>
+          <Textarea label="" value={v.caption} onChange={e => set('caption', e.target.value)} rows={3} />
+          {aiOpen && aiCtx && (
+            <div style={{ marginTop: 12, padding: 14, border: '1px solid var(--hairline)', borderRadius: 14, background: 'var(--bg)' }}>
+              <AiBrief ctx={aiCtx} compact onUseCaption={c => set('caption', c)} onUseHashtags={h => set('hashtags', h)} />
+            </div>
+          )}
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 13 }}>
           <Input label="CTA" value={v.cta} onChange={e => set('cta', e.target.value)} placeholder="Shop now" />
           <Input label="Hashtags (optional)" value={v.hashtags} onChange={e => set('hashtags', e.target.value)} placeholder="#spring #launch" />

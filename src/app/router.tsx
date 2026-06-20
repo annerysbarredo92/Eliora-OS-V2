@@ -32,6 +32,7 @@ import { AgencyReports }        from '@/portals/agency/pages/Reports'
 import { AgencyBilling }        from '@/portals/agency/pages/Billing'
 import { AgencyPipeline }       from '@/portals/agency/pages/Pipeline'
 import { AgencyOperations }     from '@/portals/agency/pages/Operations'
+import { AgencyAiStudio }       from '@/portals/agency/pages/AiStudio'
 import { AgencyTeam }           from '@/portals/agency/pages/Team'
 import { AgencyNotifications }  from '@/portals/agency/pages/Notifications'
 import { AgencySettings }       from '@/portals/agency/pages/Settings'
@@ -91,6 +92,7 @@ export const router = createBrowserRouter([
       { path: 'pipeline',         element: <AgencyPipeline /> },
       { path: 'operations',       element: <AgencyOperations /> },
       { path: 'operations/:tab',  element: <AgencyOperations /> },
+      { path: 'ai',               element: <AgencyAiStudio /> },
       { path: 'team',             element: <AgencyTeam /> },
       { path: 'notifications',    element: <AgencyNotifications /> },
       { path: 'settings',         element: <AgencySettings /> },

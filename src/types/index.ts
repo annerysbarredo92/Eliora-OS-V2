@@ -612,3 +612,12 @@ export interface CalendarEvent { id: string; agency_id: string; client_id: strin
 export type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 export interface Task { id: string; agency_id: string; client_id: string | null; title: string; description: string | null; status: TaskStatus; priority: TaskPriority; due_date: string | null; assigned_to: string | null; created_by: string | null; created_at: string; updated_at: string }
+
+/* ── Wave 4: AI & Automation ────────────────────────────── */
+export interface AiResult { captions: string[]; hooks: string[]; hashtags: string[]; ideas: string[]; creative_direction: string; visual_suggestions: string[] }
+export interface AiGeneration { id: string; agency_id: string; client_id: string | null; actor_id: string | null; kind: string; model: string | null; brief: Record<string, unknown>; result: Record<string, unknown>; created_at: string }
+export interface AiPromptTemplate { id: string; agency_id: string; name: string; kind: string; template: string; created_at: string }
+export interface AiSavedOutput { id: string; agency_id: string; client_id: string | null; generation_id: string | null; title: string; content: Record<string, unknown>; created_at: string }
+export type AutomationTrigger = 'date' | 'status' | 'manual'
+export interface Automation { id: string; agency_id: string; name: string; description: string | null; trigger_type: AutomationTrigger; trigger_config: Record<string, unknown>; action_type: string; action_config: Record<string, unknown>; is_active: boolean; created_at: string; updated_at: string }
+export interface AutomationRun { id: string; agency_id: string; automation_id: string; status: 'success' | 'failed' | 'retrying'; attempt: number; error: string | null; created_at: string }
