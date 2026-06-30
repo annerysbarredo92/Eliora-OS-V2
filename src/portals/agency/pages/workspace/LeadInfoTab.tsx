@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { updateLeadInfo, updateProjectFields } from '@/features/projects/api'
-import { money } from '@/features/operations/helpers'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'

@@ -17,10 +17,9 @@ const QUICK_ACTIONS = [
 
 interface Props {
   client: Client
-  ctx: { agencyId: string; actorId: string }
 }
 
-export function AiTab({ client, ctx }: Props) {
+export function AiTab({ client }: Props) {
   const [history, setHistory]   = useState<ChatMessage[]>([])
   const [query, setQuery]       = useState('')
   const [loading, setLoading]   = useState(false)

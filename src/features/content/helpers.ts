@@ -23,15 +23,18 @@ export const PLATFORM_OPTIONS: { value: ContentPlatform; label: string }[] = [
 ]
 
 export const STATUS_META: Record<ContentStatus, { label: string; badge: 'default' | 'info' | 'success' | 'warning' | 'danger' | 'brand' }> = {
-  draft:              { label: 'Draft',              badge: 'default' },
-  internal_review:    { label: 'Internal Review',    badge: 'info' },
-  client_review:      { label: 'Client Review',      badge: 'brand' },
-  approved:           { label: 'Approved',           badge: 'success' },
-  revision_requested: { label: 'Revision Requested', badge: 'warning' },
-  rejected:           { label: 'Rejected',           badge: 'danger' },
-  scheduled:          { label: 'Scheduled',          badge: 'info' },
-  published:          { label: 'Published',          badge: 'success' },
-  archived:           { label: 'Archived',           badge: 'default' },
+  idea:               { label: 'Idea',               badge: 'default' },
+  filming:            { label: 'Filming',             badge: 'info'    },
+  editing:            { label: 'Editing',             badge: 'info'    },
+  draft:              { label: 'Draft',               badge: 'default' },
+  internal_review:    { label: 'Internal Review',     badge: 'info'    },
+  client_review:      { label: 'Client Review',       badge: 'brand'   },
+  approved:           { label: 'Approved',            badge: 'success' },
+  revision_requested: { label: 'Revision Requested',  badge: 'warning' },
+  rejected:           { label: 'Rejected',            badge: 'danger'  },
+  scheduled:          { label: 'Scheduled',           badge: 'info'    },
+  published:          { label: 'Posted',              badge: 'success' },
+  archived:           { label: 'Archived',            badge: 'default' },
 }
 
 export function typeLabel(t: ContentType) { return CONTENT_TYPE_OPTIONS.find(o => o.value === t)?.label ?? t }

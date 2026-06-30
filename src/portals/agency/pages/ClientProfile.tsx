@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useClient } from '@/features/clients/hooks'
@@ -206,7 +206,7 @@ export function AgencyWorkspace() {
       {/* ── Tab content ── */}
       {ctx && (
         <>
-          {tab === 'overview'   && <OverviewTab   client={client} ctx={ctx} onTabChange={setTab} />}
+          {tab === 'overview'   && <OverviewTab   client={client} onTabChange={setTab} />}
           {tab === 'lead_info'  && <LeadInfoTab   client={client} ctx={ctx} onChanged={refresh} />}
           {tab === 'discovery'  && <DiscoveryTab  client={client} ctx={ctx} onChanged={refresh} />}
           {tab === 'proposal'   && <ProposalTab   client={client} ctx={ctx} onChanged={refresh} />}
@@ -217,7 +217,7 @@ export function AgencyWorkspace() {
           {tab === 'messages'   && <MessagesTab   client={client} ctx={ctx} />}
           {tab === 'reports'    && <ReportsTab    client={client} ctx={ctx} />}
           {tab === 'activity'   && <ActivityTab   client={client} />}
-          {tab === 'ai'         && <AiTab         client={client} ctx={ctx} />}
+          {tab === 'ai'         && <AiTab         client={client} />}
         </>
       )}
 

@@ -5,7 +5,7 @@ import { ActivityFeed } from '@/features/activity/ActivityFeed'
 import { money } from '@/features/operations/helpers'
 import {
   primaryContact, contactName, statusLabel, relativeTime,
-  STATUS_BADGE, HEALTH_BADGE, HEALTH_LABEL,
+  STATUS_BADGE, HEALTH_LABEL,
 } from '@/features/clients/helpers'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -13,11 +13,10 @@ import type { Client } from '@/types'
 
 interface Props {
   client: Client
-  ctx: { agencyId: string; actorId: string }
   onTabChange: (tab: string) => void
 }
 
-export function OverviewTab({ client, ctx, onTabChange }: Props) {
+export function OverviewTab({ client, onTabChange }: Props) {
   const agencyOb = useAgencyOnboarding(client.id)
   const obStats  = readProgress(agencyOb.progress)
   const activity = useActivity({ clientId: client.id, limit: 8 })
@@ -59,7 +58,7 @@ export function OverviewTab({ client, ctx, onTabChange }: Props) {
         </Panel>
 
         {/* Sales notes */}
-        {(client.lead_info as Record<string, unknown>)?.sales_notes && (
+        {!!(client.lead_info as Record<string, unknown>)?.sales_notes && (
           <Panel title="Sales Notes">
             <p style={{ fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
               {String((client.lead_info as Record<string, unknown>).sales_notes)}
