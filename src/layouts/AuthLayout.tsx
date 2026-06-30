@@ -25,7 +25,7 @@ export function AuthLayout() {
         {/* logo lockup */}
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, fontSize: 19, letterSpacing: '-0.02em' }}>
           <InfinityMark size={21} />
-          <span>Eliora</span>
+          <span>Eliora OS.M</span>
         </div>
 
         {/* center content */}

@@ -45,7 +45,7 @@ export interface Agency {
   created_at: string
 }
 
-/* ── Client (Phase 02) ──────────────────────────────────── */
+/* ── Client / Project (unified record) ──────────────────── */
 export type ClientStatus = 'active' | 'onboarding' | 'paused' | 'archived' | 'lead'
 export type ClientHealth = 'healthy' | 'at_risk' | 'critical' | 'unknown'
 
@@ -81,8 +81,27 @@ export interface Client {
   updated_by: string | null
   created_at: string
   updated_at: string
+  /* ── Project / Pipeline fields (wave-projects-workspace) ── */
+  stage_id: string | null
+  project_value_cents: number
+  lead_source: string | null
+  estimated_budget_cents: number
+  close_probability: number | null
+  decision_maker: string | null
+  next_follow_up_at: string | null
+  sales_owner_id: string | null
+  account_manager_id: string | null
+  lead_score: number | null
+  expected_close_date: string | null
+  client_since: string | null
+  location: string | null
+  next_action: string | null
+  lead_info: Record<string, unknown>
+  discovery_data: Record<string, unknown>
   /** Embedded via Supabase relationship select. */
   client_contacts?: ClientContact[]
+  /** Embedded pipeline stage via FK join. */
+  pipeline_stages?: PipelineStage
 }
 
 /** Convenience shape: a client with its resolved primary contact. */
@@ -381,7 +400,7 @@ export interface ApiResult<T> {
 /* ── Wave 1: Content (Phase 06/09) ──────────────────────── */
 export type ContentType = 'static_post' | 'carousel' | 'reel' | 'story' | 'video' | 'blog' | 'email' | 'custom'
 export type ContentPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin' | 'pinterest' | 'youtube' | 'google_business' | 'custom'
-export type ContentStatus = 'draft' | 'internal_review' | 'client_review' | 'approved' | 'revision_requested' | 'rejected' | 'scheduled' | 'published' | 'archived'
+export type ContentStatus = 'idea' | 'filming' | 'editing' | 'draft' | 'internal_review' | 'client_review' | 'approved' | 'revision_requested' | 'rejected' | 'scheduled' | 'published' | 'archived'
 export type ContentApprovalAction = 'approve' | 'request_changes' | 'reject' | 'comment'
 export type FileOwnerRole = 'agency' | 'client'
 
@@ -580,7 +599,8 @@ export interface AgencyPortalSettings {
   auto_approval: boolean; created_at: string; updated_at: string
 }
 export interface MessageThread { id: string; agency_id: string; client_id: string; subject: string | null; status: string; last_message_at: string | null; created_at: string }
-export interface Message { id: string; agency_id: string; client_id: string; thread_id: string; author_id: string | null; author_role: FileOwnerRole; body: string; created_at: string }
+export type MessageKind = 'chat' | 'email' | 'meeting_note' | 'announcement' | 'internal_note'
+export interface Message { id: string; agency_id: string; client_id: string; thread_id: string; author_id: string | null; author_role: FileOwnerRole; body: string; kind: MessageKind; subject: string | null; is_client_visible: boolean; created_at: string }
 export type RequestType = 'content' | 'file' | 'campaign' | 'strategy' | 'support' | 'meeting'
 export type RequestStatus = 'submitted' | 'in_review' | 'in_progress' | 'waiting' | 'completed' | 'closed'
 export interface ClientRequest {

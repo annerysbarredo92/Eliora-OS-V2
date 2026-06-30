@@ -33,7 +33,7 @@ export function PublicNav() {
       <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
         <InfinityMark size={20} />
         <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-          Eliora
+          Eliora OS.M
         </span>
       </Link>
 

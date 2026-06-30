@@ -142,7 +142,7 @@ export function SignupPage() {
         </Button>
 
         <p style={{ fontSize: '12.5px', color: 'var(--muted)', textAlign: 'center', lineHeight: 1.5 }}>
-          By creating a workspace you agree to Eliora's{' '}
+          By creating a workspace you agree to Eliora OS's{' '}
           <Link to="#" style={{ color: 'var(--ink-2)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}>Terms</Link>
           {' '}and{' '}
           <Link to="#" style={{ color: 'var(--ink-2)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}>Privacy Policy</Link>.

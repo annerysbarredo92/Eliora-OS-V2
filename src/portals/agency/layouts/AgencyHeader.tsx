@@ -19,7 +19,7 @@ const PAGE_TITLES: Record<string, string> = {
 export function AgencyHeader() {
   const { pathname } = useLocation()
   const segment = pathname.split('/').filter(Boolean)[1] || 'dashboard'
-  const title = PAGE_TITLES[segment] || 'Eliora OS'
+  const title = PAGE_TITLES[segment] || 'Eliora OS.M'
 
   return (
     <header

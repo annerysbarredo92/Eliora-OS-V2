@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase'
 import { logActivity } from '@/features/activity/api'
 import type { Client, ClientStatus, DashboardMetrics } from '@/types'
 
-const CLIENT_SELECT = '*, client_contacts(*)'
+const CLIENT_SELECT = '*, client_contacts(*), pipeline_stages!clients_stage_id_fkey(*)'
 
 export interface ClientFormValues {
   business_name: string

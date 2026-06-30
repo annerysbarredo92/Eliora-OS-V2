@@ -52,7 +52,7 @@ export function LandingPage() {
             marginBottom: 22,
           }}
         >
-          Eliora
+          Eliora OS.M
         </h1>
 
         <p
@@ -159,7 +159,7 @@ export function LandingPage() {
             Ready to run a better agency?
           </h2>
           <p style={{ fontSize: 16, color: 'var(--ink-2)', marginBottom: 36, lineHeight: 1.6 }}>
-            Join agencies already using Eliora OS.
+            Join agencies already using Eliora OS.M.
           </p>
           <Link to="/signup">
             <Button variant="primary" size="lg">Get started free</Button>

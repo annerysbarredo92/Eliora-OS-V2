@@ -26,10 +26,10 @@ export function PublicFooter() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <InfinityMark size={18} />
-          <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em', color: '#F3F1FA' }}>Eliora</span>
+          <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em', color: '#F3F1FA' }}>Eliora OS.M</span>
         </div>
         <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.02em' }}>
-          © {new Date().getFullYear()} Eliora OS · Built for premium agencies
+          © {new Date().getFullYear()} Eliora OS. All rights reserved.
         </p>
       </div>
     </footer>

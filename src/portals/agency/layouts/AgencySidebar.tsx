@@ -5,17 +5,15 @@ import { useAuth } from '@/hooks/useAuth'
 
 const NAV = [
   { path: '/agency/dashboard',     label: 'Dashboard'     },
-  { path: '/agency/clients',       label: 'Clients'       },
+  { path: '/agency/projects',      label: 'Projects'      },
   { path: '/agency/content',       label: 'Content'       },
   { path: '/agency/calendar',      label: 'Calendar'      },
-  { path: '/agency/tasks',         label: 'Tasks'         },
+  { path: '/agency/team',          label: 'Team'          },
   { path: '/agency/files',         label: 'Files'         },
-  { path: '/agency/reports',       label: 'Reports'       },
   { path: '/agency/billing',       label: 'Billing'       },
-  { path: '/agency/pipeline',      label: 'Pipeline'      },
+  { path: '/agency/reports',       label: 'Reports'       },
   { path: '/agency/operations',    label: 'Operations'    },
   { path: '/agency/ai',            label: 'AI Studio'     },
-  { path: '/agency/team',          label: 'Team'          },
   { path: '/agency/notifications', label: 'Notifications' },
   { path: '/agency/settings',      label: 'Settings'      },
 ]
@@ -64,7 +62,7 @@ export function AgencySidebar() {
         }}
       >
         <InfinityMark size={18} />
-        <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em', color: '#F3F1FA' }}>Eliora</span>
+        <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em', color: '#F3F1FA' }}>Eliora OS.M</span>
       </div>
 
       {/* Navigation */}

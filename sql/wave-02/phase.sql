@@ -503,7 +503,7 @@ create policy "agency_portal_settings_write" on agency_portal_settings for all
   with check (agency_id = public.current_agency_id() and public.is_agency_admin());
 
 -- Pattern AOW: agency members read; admin OR owner/creator write. (leads + sales records)
--- leads (owner_id), lead_notes/lead_activities/proposals/contracts (created_by/owner)
+-- leads (owner_id), lead_notes (author_id), lead_activities (actor_id), proposals/contracts (created_by)
 drop policy if exists "leads_select" on leads;
 create policy "leads_select" on leads for select using (agency_id = public.current_agency_id());
 drop policy if exists "leads_write" on leads;
@@ -511,10 +511,27 @@ create policy "leads_write" on leads for all
   using (agency_id = public.current_agency_id() and (public.is_agency_admin() or owner_id = auth.uid() or created_by = auth.uid()))
   with check (agency_id = public.current_agency_id());
 
+-- lead_notes uses author_id (not created_by)
+drop policy if exists "lead_notes_select" on lead_notes;
+create policy "lead_notes_select" on lead_notes for select using (agency_id = public.current_agency_id());
+drop policy if exists "lead_notes_write" on lead_notes;
+create policy "lead_notes_write" on lead_notes for all
+  using (agency_id = public.current_agency_id() and (public.is_agency_admin() or author_id = auth.uid()))
+  with check (agency_id = public.current_agency_id());
+
+-- lead_activities uses actor_id (not created_by)
+drop policy if exists "lead_activities_select" on lead_activities;
+create policy "lead_activities_select" on lead_activities for select using (agency_id = public.current_agency_id());
+drop policy if exists "lead_activities_write" on lead_activities;
+create policy "lead_activities_write" on lead_activities for all
+  using (agency_id = public.current_agency_id() and (public.is_agency_admin() or actor_id = auth.uid()))
+  with check (agency_id = public.current_agency_id());
+
+-- proposals and contracts correctly use created_by
 do $$
 declare t text;
 begin
-  foreach t in array array['lead_notes','lead_activities','proposals','contracts'] loop
+  foreach t in array array['proposals','contracts'] loop
     execute format('drop policy if exists %I on %I', t||'_select', t);
     execute format('create policy %I on %I for select using (agency_id = public.current_agency_id())', t||'_select', t);
     execute format('drop policy if exists %I on %I', t||'_write', t);

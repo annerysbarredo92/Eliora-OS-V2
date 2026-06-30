@@ -47,7 +47,7 @@ export function LoginPage() {
         Welcome back
       </h1>
       <p style={{ fontSize: 15.5, color: 'var(--ink-2)', marginBottom: 28 }}>
-        Sign in to your Eliora workspace.
+        Sign in to your Eliora OS.M workspace.
       </p>
 
       <div style={{ marginBottom: 16 }}><GoogleButton /></div>

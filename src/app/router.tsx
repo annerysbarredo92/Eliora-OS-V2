@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom'
 
 // Layouts
 import { PublicLayout }  from '@/layouts/PublicLayout'
@@ -22,20 +22,24 @@ import { ForgotPage }      from '@/pages/auth/ForgotPage'
 
 // Agency pages
 import { AgencyDashboard }      from '@/portals/agency/pages/Dashboard'
-import { AgencyClients }        from '@/portals/agency/pages/Clients'
-import { AgencyClientProfile }  from '@/portals/agency/pages/ClientProfile'
+import { AgencyProjects }       from '@/portals/agency/pages/Pipeline'
+import { AgencyWorkspace }      from '@/portals/agency/pages/ClientProfile'
 import { AgencyContent }        from '@/portals/agency/pages/Content'
 import { AgencyCalendar }       from '@/portals/agency/pages/Calendar'
 import { AgencyTasks }          from '@/portals/agency/pages/Tasks'
 import { AgencyFiles }          from '@/portals/agency/pages/Files'
 import { AgencyReports }        from '@/portals/agency/pages/Reports'
 import { AgencyBilling }        from '@/portals/agency/pages/Billing'
-import { AgencyPipeline }       from '@/portals/agency/pages/Pipeline'
 import { AgencyOperations }     from '@/portals/agency/pages/Operations'
 import { AgencyAiStudio }       from '@/portals/agency/pages/AiStudio'
 import { AgencyTeam }           from '@/portals/agency/pages/Team'
 import { AgencyNotifications }  from '@/portals/agency/pages/Notifications'
 import { AgencySettings }       from '@/portals/agency/pages/Settings'
+
+function RedirectClientToProject() {
+  const { clientId } = useParams<{ clientId: string }>()
+  return <Navigate to={`/agency/projects/${clientId}`} replace />
+}
 
 // Client pages
 import { ClientDashboard }      from '@/portals/client/pages/Dashboard'
@@ -79,23 +83,27 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true,              element: <Navigate to="dashboard" replace /> },
-      { path: 'dashboard',        element: <AgencyDashboard /> },
-      { path: 'clients',          element: <AgencyClients /> },
-      { path: 'clients/:clientId', element: <AgencyClientProfile /> },
-      { path: 'content',          element: <AgencyContent /> },
-      { path: 'calendar',         element: <AgencyCalendar /> },
-      { path: 'tasks',            element: <AgencyTasks /> },
-      { path: 'files',            element: <AgencyFiles /> },
-      { path: 'reports',          element: <AgencyReports /> },
-      { path: 'billing',          element: <AgencyBilling /> },
-      { path: 'pipeline',         element: <AgencyPipeline /> },
-      { path: 'operations',       element: <AgencyOperations /> },
-      { path: 'operations/:tab',  element: <AgencyOperations /> },
-      { path: 'ai',               element: <AgencyAiStudio /> },
-      { path: 'team',             element: <AgencyTeam /> },
-      { path: 'notifications',    element: <AgencyNotifications /> },
-      { path: 'settings',         element: <AgencySettings /> },
+      { index: true,                   element: <Navigate to="dashboard" replace /> },
+      { path: 'dashboard',             element: <AgencyDashboard /> },
+      { path: 'projects',              element: <AgencyProjects /> },
+      { path: 'projects/:projectId',   element: <AgencyWorkspace /> },
+      /* ── Legacy redirects (old routes) ── */
+      { path: 'pipeline',              element: <Navigate to="/agency/projects" replace /> },
+      { path: 'clients',               element: <Navigate to="/agency/projects" replace /> },
+      { path: 'clients/:clientId',     element: <RedirectClientToProject /> },
+      /* ── Other pages ── */
+      { path: 'content',               element: <AgencyContent /> },
+      { path: 'calendar',              element: <AgencyCalendar /> },
+      { path: 'tasks',                 element: <AgencyTasks /> },
+      { path: 'files',                 element: <AgencyFiles /> },
+      { path: 'reports',               element: <AgencyReports /> },
+      { path: 'billing',               element: <AgencyBilling /> },
+      { path: 'operations',            element: <AgencyOperations /> },
+      { path: 'operations/:tab',       element: <AgencyOperations /> },
+      { path: 'ai',                    element: <AgencyAiStudio /> },
+      { path: 'team',                  element: <AgencyTeam /> },
+      { path: 'notifications',         element: <AgencyNotifications /> },
+      { path: 'settings',              element: <AgencySettings /> },
     ],
   },
 
