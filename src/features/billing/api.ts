@@ -57,6 +57,14 @@ export async function recordPayment(inv: Invoice, amountCents: number, method: P
   await logActivity({ agencyId: ctx.agencyId, actorId: ctx.actorId, clientId: inv.client_id, action: 'payment.recorded', entityType: 'invoice', entityId: inv.id, description: `Recorded payment on ${inv.number}` })
 }
 
+/** Returns total payment amount_cents recorded in the current calendar month. */
+export async function getMonthlyRevenue(): Promise<number> {
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const { data } = await supabase.from('payments').select('amount_cents').gte('recorded_at', startOfMonth)
+  return ((data ?? []) as { amount_cents: number }[]).reduce((sum, p) => sum + p.amount_cents, 0)
+}
+
 export interface BillingMetrics { monthly: number; outstanding: number; collected: number; overdue: number }
 export function computeBillingMetrics(invoices: Invoice[]): BillingMetrics {
   const now = new Date(); const m: BillingMetrics = { monthly: 0, outstanding: 0, collected: 0, overdue: 0 }

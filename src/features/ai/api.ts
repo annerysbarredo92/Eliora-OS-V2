@@ -14,7 +14,7 @@ const EMPTY: AiResult = { captions: [], hooks: [], hashtags: [], ideas: [], crea
 export interface GenerateOutcome { result: AiResult; notConfigured: boolean; error?: string; model?: string }
 
 /** Calls the ai-generate Edge Function (server-side key), then logs the generation. */
-export async function generate(brief: Brief, count: number, kind: string, ctx: Ctx): Promise<GenerateOutcome> {
+export async function generate(brief: Brief | Record<string, unknown>, count: number, kind: string, ctx: Ctx): Promise<GenerateOutcome> {
   const { data, error } = await supabase.functions.invoke('ai-generate', { body: { brief, count, kind } })
   if (error) return { result: EMPTY, notConfigured: false, error: error.message }
   if (data?.not_configured) return { result: EMPTY, notConfigured: true }
@@ -34,6 +34,21 @@ export async function listGenerations(): Promise<AiGeneration[]> {
   const { data, error } = await supabase.from('ai_generations').select('*').order('created_at', { ascending: false }).limit(50)
   if (error) { console.error('listGenerations:', error.message); return [] }
   return (data ?? []) as AiGeneration[]
+}
+
+/** Returns today's daily brief generation, or null if one hasn't been generated yet. */
+export async function getTodaysBrief(): Promise<AiGeneration | null> {
+  const today = new Date().toISOString().slice(0, 10)
+  const { data } = await supabase
+    .from('ai_generations')
+    .select('*')
+    .eq('kind', 'daily_brief')
+    .gte('created_at', `${today}T00:00:00.000Z`)
+    .lt('created_at', `${today}T23:59:59.999Z`)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return (data as AiGeneration) ?? null
 }
 export async function listPromptTemplates(): Promise<AiPromptTemplate[]> {
   const { data } = await supabase.from('ai_prompt_templates').select('*').order('created_at', { ascending: false })

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useProjects, useProjectStages } from '@/features/projects/hooks'
 import { createProject, checkProposalExpiry } from '@/features/projects/api'
@@ -25,17 +25,28 @@ const STAGE_COLORS: Record<string, string> = {
   'Client':             '#059669',
 }
 
+// Maps URL ?health param → DB health column value
+const HEALTH_PARAM_TO_DB: Record<string, string> = {
+  healthy:         'healthy',
+  needs_attention: 'at_risk',
+  at_risk:         'critical',
+}
+
 export function AgencyProjects() {
-  const { profile } = useAuth()
-  const navigate    = useNavigate()
+  const { profile }     = useAuth()
+  const navigate        = useNavigate()
+  const [searchParams]  = useSearchParams()
   const { projects, loading, refresh } = useProjects()
   const { stages, summary, loading: stagesLoading } = useProjectStages()
 
   const [filterStage, setFilterStage] = useState<string | null>(null)
   const [search, setSearch]           = useState('')
-  const [showCreate, setShowCreate]   = useState(false)
+  const [showCreate, setShowCreate]   = useState(() => searchParams.get('create') === 'true')
   const [archiveTarget, setArchiveTarget] = useState<Client | null>(null)
   const [archiving, setArchiving]         = useState(false)
+
+  const healthParam = searchParams.get('health')
+  const filterHealthDb = healthParam ? (HEALTH_PARAM_TO_DB[healthParam] ?? null) : null
 
   const ctx = profile?.agency_id && profile?.id
     ? { agencyId: profile.agency_id, actorId: profile.id }
@@ -43,6 +54,7 @@ export function AgencyProjects() {
 
   const filtered = projects.filter(p => {
     if (filterStage && p.stage_id !== filterStage) return false
+    if (filterHealthDb && p.health !== filterHealthDb) return false
     if (search && !p.business_name.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
