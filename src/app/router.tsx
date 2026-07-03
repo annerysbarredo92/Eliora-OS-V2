@@ -21,7 +21,9 @@ import { SignupPage }      from '@/pages/auth/SignupPage'
 import { ForgotPage }      from '@/pages/auth/ForgotPage'
 
 // Agency pages
-import { AgencyDashboard }      from '@/portals/agency/pages/Dashboard'
+import { AgencyHome }           from '@/portals/agency/pages/Home'
+import { AgencyHQ }             from '@/portals/agency/pages/AgencyHQ'
+import { AgencyInbox }          from '@/portals/agency/pages/Inbox'
 import { AgencyProjects }       from '@/portals/agency/pages/Pipeline'
 import { AgencyWorkspace }      from '@/portals/agency/pages/ClientProfile'
 import { AgencyContent }        from '@/portals/agency/pages/Content'
@@ -29,12 +31,7 @@ import { AgencyCalendar }       from '@/portals/agency/pages/Calendar'
 import { AgencyTasks }          from '@/portals/agency/pages/Tasks'
 import { AgencyFiles }          from '@/portals/agency/pages/Files'
 import { AgencyReports }        from '@/portals/agency/pages/Reports'
-import { AgencyBilling }        from '@/portals/agency/pages/Billing'
-import { AgencyOperations }     from '@/portals/agency/pages/Operations'
 import { AgencyAiStudio }       from '@/portals/agency/pages/AiStudio'
-import { AgencyTeam }           from '@/portals/agency/pages/Team'
-import { AgencyNotifications }  from '@/portals/agency/pages/Notifications'
-import { AgencySettings }       from '@/portals/agency/pages/Settings'
 
 function RedirectClientToProject() {
   const { clientId } = useParams<{ clientId: string }>()
@@ -83,27 +80,36 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true,                   element: <Navigate to="dashboard" replace /> },
-      { path: 'dashboard',             element: <AgencyDashboard /> },
+      /* Default landing */
+      { index: true,                   element: <Navigate to="home" replace /> },
+
+      /* Primary nav pages */
+      { path: 'home',                  element: <AgencyHome /> },
       { path: 'projects',              element: <AgencyProjects /> },
       { path: 'projects/:projectId',   element: <AgencyWorkspace /> },
-      /* ── Legacy redirects (old routes) ── */
-      { path: 'pipeline',              element: <Navigate to="/agency/projects" replace /> },
-      { path: 'clients',               element: <Navigate to="/agency/projects" replace /> },
-      { path: 'clients/:clientId',     element: <RedirectClientToProject /> },
-      /* ── Other pages ── */
+      { path: 'agency',                element: <AgencyHQ /> },
+      { path: 'agency/:tab',           element: <AgencyHQ /> },
+      { path: 'inbox',                 element: <AgencyInbox /> },
+      { path: 'ai',                    element: <AgencyAiStudio /> },
+
+      /* Utility pages (not in sidebar, still accessible) */
       { path: 'content',               element: <AgencyContent /> },
       { path: 'calendar',              element: <AgencyCalendar /> },
       { path: 'tasks',                 element: <AgencyTasks /> },
       { path: 'files',                 element: <AgencyFiles /> },
       { path: 'reports',               element: <AgencyReports /> },
-      { path: 'billing',               element: <AgencyBilling /> },
-      { path: 'operations',            element: <AgencyOperations /> },
-      { path: 'operations/:tab',       element: <AgencyOperations /> },
-      { path: 'ai',                    element: <AgencyAiStudio /> },
-      { path: 'team',                  element: <AgencyTeam /> },
-      { path: 'notifications',         element: <AgencyNotifications /> },
-      { path: 'settings',              element: <AgencySettings /> },
+
+      /* ── Legacy redirects ── */
+      { path: 'dashboard',             element: <Navigate to="/agency/home"           replace /> },
+      { path: 'notifications',         element: <Navigate to="/agency/inbox"          replace /> },
+      { path: 'operations',            element: <Navigate to="/agency/agency"         replace /> },
+      { path: 'operations/:tab',       element: <Navigate to="/agency/agency"         replace /> },
+      { path: 'team',                  element: <Navigate to="/agency/agency/team"    replace /> },
+      { path: 'billing',               element: <Navigate to="/agency/agency/billing" replace /> },
+      { path: 'settings',              element: <Navigate to="/agency/agency/settings" replace /> },
+      { path: 'pipeline',              element: <Navigate to="/agency/projects"       replace /> },
+      { path: 'clients',               element: <Navigate to="/agency/projects"       replace /> },
+      { path: 'clients/:clientId',     element: <RedirectClientToProject /> },
     ],
   },
 

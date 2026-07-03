@@ -13,33 +13,46 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Select } from '@/components/ui/Select'
-import { OverviewTab }    from './workspace/OverviewTab'
-import { LeadInfoTab }    from './workspace/LeadInfoTab'
-import { DiscoveryTab }   from './workspace/DiscoveryTab'
-import { ProposalTab }    from './workspace/ProposalTab'
-import { OnboardingTab }  from './workspace/OnboardingTab'
-import { ContentTab }     from './workspace/ContentTab'
-import { CalendarTab }    from './workspace/CalendarTab'
-import { FilesTab }       from './workspace/FilesTab'
-import { MessagesTab }    from './workspace/MessagesTab'
-import { ReportsTab }     from './workspace/ReportsTab'
-import { ActivityTab }    from './workspace/ActivityTab'
-import { AiTab }          from './workspace/AiTab'
+// Lead-stage workspace tabs
+import { OverviewTab }      from './workspace/OverviewTab'
+import { LeadInfoTab }      from './workspace/LeadInfoTab'
+import { DiscoveryTab }     from './workspace/DiscoveryTab'
+import { ProposalTab }      from './workspace/ProposalTab'
+import { OnboardingTab }    from './workspace/OnboardingTab'
+import { MessagesTab }      from './workspace/MessagesTab'
+import { ActivityTab }      from './workspace/ActivityTab'
+import { AiTab }            from './workspace/AiTab'
+// Client-stage workspace tabs
+import { BusinessTab }      from './workspace/BusinessTab'
+import { MarketingTab }     from './workspace/MarketingTab'
+import { CreativeTab }      from './workspace/CreativeTab'
+import { DigitalTab }       from './workspace/DigitalTab'
+import { OpsTab }           from './workspace/OpsTab'
+import { ClientSuccessTab } from './workspace/ClientSuccessTab'
+import { InsightsTab }      from './workspace/InsightsTab'
 import type { ClientFormValues } from '@/features/clients/api'
 
-const TABS = [
-  { id: 'overview',    label: 'Overview'       },
-  { id: 'lead_info',   label: 'Lead Info'      },
-  { id: 'discovery',   label: 'Discovery'      },
-  { id: 'proposal',    label: 'Proposals'      },
-  { id: 'onboarding',  label: 'Onboarding'     },
-  { id: 'content',     label: 'Content'        },
-  { id: 'calendar',    label: 'Calendar'       },
-  { id: 'files',       label: 'Files'          },
-  { id: 'messages',    label: 'Messages'       },
-  { id: 'reports',     label: 'Reports'        },
-  { id: 'activity',    label: 'Activity'       },
-  { id: 'ai',          label: 'AI'             },
+const LEAD_TABS = [
+  { id: 'overview',   label: 'Overview'  },
+  { id: 'lead_info',  label: 'Lead Info' },
+  { id: 'discovery',  label: 'Discovery' },
+  { id: 'proposal',   label: 'Proposals' },
+  { id: 'onboarding', label: 'Onboarding'},
+  { id: 'messages',   label: 'Messages'  },
+  { id: 'activity',   label: 'Activity'  },
+  { id: 'ai',         label: 'AI'        },
+]
+
+const CLIENT_TABS = [
+  { id: 'overview',        label: 'Overview'        },
+  { id: 'business',        label: 'Business'        },
+  { id: 'marketing',       label: 'Marketing'       },
+  { id: 'creative',        label: 'Creative'        },
+  { id: 'digital',         label: 'Digital'         },
+  { id: 'client_ops',      label: 'Operations'      },
+  { id: 'client_success',  label: 'Client Success'  },
+  { id: 'insights',        label: 'Insights'        },
+  { id: 'ai',              label: 'AI'              },
 ]
 
 export function AgencyWorkspace() {
@@ -49,8 +62,8 @@ export function AgencyWorkspace() {
   const { client, loading, error, refresh } = useClient(projectId)
   const { stages }    = useProjectStages()
 
-  const [tab, setTab]             = useState('overview')
-  const [editing, setEditing]     = useState(false)
+  const [tab, setTab]                 = useState('overview')
+  const [editing, setEditing]         = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiving, setArchiving]     = useState(false)
   const [enabling, setEnabling]       = useState(false)
@@ -77,11 +90,8 @@ export function AgencyWorkspace() {
   async function handleArchive() {
     if (!ctx || !client) return
     setArchiving(true)
-    try {
-      await archiveClient(client, ctx)
-      setArchiveOpen(false)
-      navigate('/agency/projects')
-    } finally { setArchiving(false) }
+    try { await archiveClient(client, ctx); setArchiveOpen(false); navigate('/agency/projects') }
+    finally { setArchiving(false) }
   }
 
   async function handleMoveStage() {
@@ -120,11 +130,26 @@ export function AgencyWorkspace() {
   const pc    = primaryContact(client)
   const stage = client.pipeline_stages
 
+  // Stage-based workspace: 'Client' stage → full client workspace, otherwise lead pipeline view
+  const isClientStage = stage?.name === 'Client'
+  const TABS          = isClientStage ? CLIENT_TABS : LEAD_TABS
+
+  // If current tab doesn't exist in the active tab set, fall back to overview
+  const resolvedTab = TABS.find(t => t.id === tab) ? tab : 'overview'
+
+  function changeTab(id: string) { setTab(id) }
+
+  const valueLabel   = isClientStage ? 'Retainer Value' : 'Project Value'
+  const healthLabel  = isClientStage ? 'Client Health'  : 'Close %'
+  const healthValue  = isClientStage
+    ? (client.health !== 'unknown' ? HEALTH_LABEL[client.health] : '—')
+    : (client.close_probability != null ? `${client.close_probability}%` : '—')
+
   return (
     <div className="animate-fade-up">
       {/* ── Workspace Header ── */}
       <div style={{ background: 'var(--surface)', backdropFilter: 'blur(22px) saturate(1.5)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-glass)', padding: '18px 20px', marginBottom: 16 }}>
-        {/* Top row: identity + actions */}
+        {/* Identity + actions row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
             {/* Avatar */}
@@ -144,11 +169,7 @@ export function AgencyWorkspace() {
                 {client.health !== 'unknown' && <Badge variant={HEALTH_BADGE[client.health]}>{HEALTH_LABEL[client.health]}</Badge>}
               </div>
               <p style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
-                {[
-                  client.industry,
-                  client.location ?? client.business_address,
-                  client.website,
-                ].filter(Boolean).join(' · ')}
+                {[client.industry, client.location ?? client.business_address, client.website].filter(Boolean).join(' · ')}
               </p>
               {pc && (
                 <p style={{ fontSize: 12.5, color: 'var(--ink-2)', marginTop: 2 }}>
@@ -164,8 +185,8 @@ export function AgencyWorkspace() {
               <Button variant="outline" size="sm" onClick={handleEnablePortal} loading={enabling}>Enable Portal</Button>
             )}
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Edit</Button>
-            <Button variant="ghost" size="sm" onClick={() => setTab('messages')}>Message</Button>
-            <Button variant="ghost" size="sm" onClick={() => setTab('ai')}>Ask AI</Button>
+            <Button variant="ghost" size="sm" onClick={() => changeTab(isClientStage ? 'client_success' : 'messages')}>Message</Button>
+            <Button variant="ghost" size="sm" onClick={() => changeTab('ai')}>Ask AI</Button>
             {client.status !== 'archived' && (
               <Button variant="ghost" size="sm" onClick={() => setArchiveOpen(true)}>Archive</Button>
             )}
@@ -174,11 +195,11 @@ export function AgencyWorkspace() {
 
         {/* KPI strip */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(120px,1fr))', gap: 8, marginTop: 16 }}>
-          <KpiPill label="Project Value" value={client.project_value_cents > 0 ? money(client.project_value_cents) : '—'} />
-          <KpiPill label="Portal" value={client.portal_enabled ? 'Enabled' : 'Off'} />
-          <KpiPill label="Close %" value={client.close_probability != null ? `${client.close_probability}%` : '—'} />
-          <KpiPill label="Lead Score" value={client.lead_score != null ? `${client.lead_score}/100` : '—'} />
-          <KpiPill label="Last Activity" value={relativeTime(client.last_activity_at)} />
+          <KpiPill label={valueLabel}     value={client.project_value_cents > 0 ? money(client.project_value_cents) : '—'} />
+          <KpiPill label="Portal"         value={client.portal_enabled ? 'Enabled' : 'Off'} />
+          <KpiPill label={healthLabel}    value={healthValue} />
+          <KpiPill label="Lead Score"     value={client.lead_score != null ? `${client.lead_score}/100` : '—'} />
+          <KpiPill label="Last Activity"  value={relativeTime(client.last_activity_at)} />
           {client.client_since && <KpiPill label="Client Since" value={new Date(client.client_since).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} />}
         </div>
       </div>
@@ -188,13 +209,13 @@ export function AgencyWorkspace() {
         {TABS.map(t => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => changeTab(t.id)}
             style={{
               padding: '10px 14px', fontSize: 13, fontFamily: 'var(--font-sans)',
-              fontWeight: tab === t.id ? 600 : 400,
-              color: tab === t.id ? 'var(--violet)' : 'var(--ink-2)',
+              fontWeight: resolvedTab === t.id ? 600 : 400,
+              color: resolvedTab === t.id ? 'var(--violet)' : 'var(--ink-2)',
               background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-              borderBottom: tab === t.id ? '2px solid var(--violet)' : '2px solid transparent',
+              borderBottom: resolvedTab === t.id ? '2px solid var(--violet)' : '2px solid transparent',
               marginBottom: -1, letterSpacing: '-0.01em',
             }}
           >
@@ -206,25 +227,34 @@ export function AgencyWorkspace() {
       {/* ── Tab content ── */}
       {ctx && (
         <>
-          {tab === 'overview'   && <OverviewTab   client={client} onTabChange={setTab} />}
-          {tab === 'lead_info'  && <LeadInfoTab   client={client} ctx={ctx} onChanged={refresh} />}
-          {tab === 'discovery'  && <DiscoveryTab  client={client} ctx={ctx} onChanged={refresh} />}
-          {tab === 'proposal'   && <ProposalTab   client={client} ctx={ctx} onChanged={refresh} />}
-          {tab === 'onboarding' && <OnboardingTab client={client} ctx={ctx} />}
-          {tab === 'content'    && <ContentTab    client={client} ctx={ctx} />}
-          {tab === 'calendar'   && <CalendarTab   client={client} />}
-          {tab === 'files'      && <FilesTab      client={client} ctx={ctx} />}
-          {tab === 'messages'   && <MessagesTab   client={client} ctx={ctx} />}
-          {tab === 'reports'    && <ReportsTab    client={client} ctx={ctx} />}
-          {tab === 'activity'   && <ActivityTab   client={client} />}
-          {tab === 'ai'         && <AiTab         client={client} />}
+          {/* Overview is shared across both stage modes */}
+          {resolvedTab === 'overview' && <OverviewTab client={client} onTabChange={changeTab} />}
+
+          {/* Lead-stage tabs */}
+          {!isClientStage && resolvedTab === 'lead_info'  && <LeadInfoTab   client={client} ctx={ctx} onChanged={refresh} />}
+          {!isClientStage && resolvedTab === 'discovery'  && <DiscoveryTab  client={client} ctx={ctx} onChanged={refresh} />}
+          {!isClientStage && resolvedTab === 'proposal'   && <ProposalTab   client={client} ctx={ctx} onChanged={refresh} />}
+          {!isClientStage && resolvedTab === 'onboarding' && <OnboardingTab client={client} ctx={ctx} />}
+          {!isClientStage && resolvedTab === 'messages'   && <MessagesTab   client={client} ctx={ctx} />}
+          {!isClientStage && resolvedTab === 'activity'   && <ActivityTab   client={client} />}
+
+          {/* Client-stage workspace tabs */}
+          {isClientStage && resolvedTab === 'business'       && <BusinessTab      client={client} ctx={ctx} onChanged={refresh} />}
+          {isClientStage && resolvedTab === 'marketing'      && <MarketingTab     client={client} ctx={ctx} />}
+          {isClientStage && resolvedTab === 'creative'       && <CreativeTab      client={client} ctx={ctx} />}
+          {isClientStage && resolvedTab === 'digital'        && <DigitalTab />}
+          {isClientStage && resolvedTab === 'client_ops'     && <OpsTab           client={client} />}
+          {isClientStage && resolvedTab === 'client_success' && <ClientSuccessTab client={client} ctx={ctx} />}
+          {isClientStage && resolvedTab === 'insights'       && <InsightsTab      client={client} ctx={ctx} />}
+
+          {/* AI is shared */}
+          {resolvedTab === 'ai' && <AiTab client={client} />}
         </>
       )}
 
       {/* ── Modals ── */}
       <ClientFormModal open={editing} mode="edit" initial={clientToFormValues(client)} onClose={() => setEditing(false)} onSubmit={handleEdit} />
 
-      {/* Stage move modal */}
       <Modal open={stageOpen} onClose={() => setStageOpen(false)} title="Move to Stage" width={400}
         footer={
           <>
@@ -233,12 +263,8 @@ export function AgencyWorkspace() {
           </>
         }
       >
-        <Select
-          label="Select stage"
-          value={newStageId}
-          onChange={e => setNewStageId(e.target.value)}
-          options={stages.map(s => ({ value: s.id, label: s.name }))}
-        />
+        <Select label="Select stage" value={newStageId} onChange={e => setNewStageId(e.target.value)}
+          options={stages.map(s => ({ value: s.id, label: s.name }))} />
       </Modal>
 
       <Modal
