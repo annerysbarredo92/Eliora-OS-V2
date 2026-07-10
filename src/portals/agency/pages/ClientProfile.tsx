@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useClient } from '@/features/clients/hooks'
 import { updateClient, archiveClient, clientToFormValues } from '@/features/clients/api'
@@ -19,7 +19,7 @@ import { LeadInfoTab }      from './workspace/LeadInfoTab'
 import { DiscoveryTab }     from './workspace/DiscoveryTab'
 import { ProposalTab }      from './workspace/ProposalTab'
 import { OnboardingTab }    from './workspace/OnboardingTab'
-import { MessagesTab }      from './workspace/MessagesTab'
+import { CommunicationTab } from './workspace/CommunicationTab'
 import { ActivityTab }      from './workspace/ActivityTab'
 import { AiTab }            from './workspace/AiTab'
 // Client-stage workspace tabs
@@ -32,13 +32,27 @@ import { ClientSuccessTab } from './workspace/ClientSuccessTab'
 import { InsightsTab }      from './workspace/InsightsTab'
 import type { ClientFormValues } from '@/features/clients/api'
 
+// ── URL tab slug ↔ component tab ID ─────────────────────────────────────────
+const SLUG_TO_ID: Record<string, string> = {
+  'lead-info':      'lead_info',
+  'client-success': 'client_success',
+  'operations':     'client_ops',
+}
+const ID_TO_SLUG: Record<string, string> = {
+  lead_info:      'lead-info',
+  client_success: 'client-success',
+  client_ops:     'operations',
+}
+function slugToId(slug: string): string { return SLUG_TO_ID[slug] ?? slug }
+function idToSlug(id: string): string   { return ID_TO_SLUG[id]   ?? id   }
+
 const LEAD_TABS = [
   { id: 'overview',   label: 'Overview'  },
   { id: 'lead_info',  label: 'Lead Info' },
   { id: 'discovery',  label: 'Discovery' },
   { id: 'proposal',   label: 'Proposals' },
   { id: 'onboarding', label: 'Onboarding'},
-  { id: 'messages',   label: 'Messages'  },
+  { id: 'messages',   label: 'Communication' },
   { id: 'activity',   label: 'Activity'  },
   { id: 'ai',         label: 'AI'        },
 ]
@@ -46,6 +60,7 @@ const LEAD_TABS = [
 const CLIENT_TABS = [
   { id: 'overview',        label: 'Overview'        },
   { id: 'business',        label: 'Business'        },
+  { id: 'onboarding',      label: 'Onboarding'      },
   { id: 'marketing',       label: 'Marketing'       },
   { id: 'creative',        label: 'Creative'        },
   { id: 'digital',         label: 'Digital'         },
@@ -59,10 +74,11 @@ export function AgencyWorkspace() {
   const { projectId } = useParams<{ projectId: string }>()
   const { profile }   = useAuth()
   const navigate      = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { client, loading, error, refresh } = useClient(projectId)
   const { stages }    = useProjectStages()
 
-  const [tab, setTab]                 = useState('overview')
+  const [tab, setTab]                 = useState(() => slugToId(searchParams.get('tab') ?? 'overview'))
   const [editing, setEditing]         = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiving, setArchiving]     = useState(false)
@@ -130,18 +146,21 @@ export function AgencyWorkspace() {
   const pc    = primaryContact(client)
   const stage = client.pipeline_stages
 
-  // Stage-based workspace: 'Client' stage → full client workspace, otherwise lead pipeline view
-  const isClientStage = stage?.name === 'Client'
-  const TABS          = isClientStage ? CLIENT_TABS : LEAD_TABS
+  // Safer detection: active status OR legacy 'Client' stage name
+  const isActiveClient = client.status === 'active' || stage?.name === 'Client'
+  const TABS           = isActiveClient ? CLIENT_TABS : LEAD_TABS
 
   // If current tab doesn't exist in the active tab set, fall back to overview
   const resolvedTab = TABS.find(t => t.id === tab) ? tab : 'overview'
 
-  function changeTab(id: string) { setTab(id) }
+  function changeTab(id: string) {
+    setTab(id)
+    setSearchParams({ tab: idToSlug(id) }, { replace: true })
+  }
 
-  const valueLabel   = isClientStage ? 'Retainer Value' : 'Project Value'
-  const healthLabel  = isClientStage ? 'Client Health'  : 'Close %'
-  const healthValue  = isClientStage
+  const valueLabel   = isActiveClient ? 'Retainer Value' : 'Project Value'
+  const healthLabel  = isActiveClient ? 'Client Health'  : 'Close %'
+  const healthValue  = isActiveClient
     ? (client.health !== 'unknown' ? HEALTH_LABEL[client.health] : '—')
     : (client.close_probability != null ? `${client.close_probability}%` : '—')
 
@@ -185,7 +204,7 @@ export function AgencyWorkspace() {
               <Button variant="outline" size="sm" onClick={handleEnablePortal} loading={enabling}>Enable Portal</Button>
             )}
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Edit</Button>
-            <Button variant="ghost" size="sm" onClick={() => changeTab(isClientStage ? 'client_success' : 'messages')}>Message</Button>
+            <Button variant="ghost" size="sm" onClick={() => changeTab(isActiveClient ? 'client_success' : 'messages')}>Message</Button>
             <Button variant="ghost" size="sm" onClick={() => changeTab('ai')}>Ask AI</Button>
             {client.status !== 'archived' && (
               <Button variant="ghost" size="sm" onClick={() => setArchiveOpen(true)}>Archive</Button>
@@ -227,27 +246,31 @@ export function AgencyWorkspace() {
       {/* ── Tab content ── */}
       {ctx && (
         <>
-          {/* Overview is shared across both stage modes */}
-          {resolvedTab === 'overview' && <OverviewTab client={client} onTabChange={changeTab} />}
+          {/* Overview is shared across both modes */}
+          {resolvedTab === 'overview' && (
+            <OverviewTab client={client} onTabChange={changeTab} isActiveClient={isActiveClient} />
+          )}
 
           {/* Lead-stage tabs */}
-          {!isClientStage && resolvedTab === 'lead_info'  && <LeadInfoTab   client={client} ctx={ctx} onChanged={refresh} />}
-          {!isClientStage && resolvedTab === 'discovery'  && <DiscoveryTab  client={client} ctx={ctx} onChanged={refresh} />}
-          {!isClientStage && resolvedTab === 'proposal'   && <ProposalTab   client={client} ctx={ctx} onChanged={refresh} />}
-          {!isClientStage && resolvedTab === 'onboarding' && <OnboardingTab client={client} ctx={ctx} />}
-          {!isClientStage && resolvedTab === 'messages'   && <MessagesTab   client={client} ctx={ctx} />}
-          {!isClientStage && resolvedTab === 'activity'   && <ActivityTab   client={client} />}
+          {!isActiveClient && resolvedTab === 'lead_info'  && <LeadInfoTab   client={client} ctx={ctx} onChanged={refresh} />}
+          {!isActiveClient && resolvedTab === 'discovery'  && <DiscoveryTab  client={client} ctx={ctx} onChanged={refresh} />}
+          {!isActiveClient && resolvedTab === 'proposal'   && <ProposalTab   client={client} ctx={ctx} onChanged={refresh} />}
+          {!isActiveClient && resolvedTab === 'messages'   && <CommunicationTab client={client} ctx={ctx} />}
+          {!isActiveClient && resolvedTab === 'activity'   && <ActivityTab   client={client} />}
+
+          {/* Onboarding is available in both modes (gated internally by stage) */}
+          {resolvedTab === 'onboarding' && <OnboardingTab client={client} ctx={ctx} />}
 
           {/* Client-stage workspace tabs */}
-          {isClientStage && resolvedTab === 'business'       && <BusinessTab      client={client} ctx={ctx} onChanged={refresh} />}
-          {isClientStage && resolvedTab === 'marketing'      && <MarketingTab     client={client} ctx={ctx} />}
-          {isClientStage && resolvedTab === 'creative'       && <CreativeTab      client={client} ctx={ctx} />}
-          {isClientStage && resolvedTab === 'digital'        && <DigitalTab />}
-          {isClientStage && resolvedTab === 'client_ops'     && <OpsTab           client={client} />}
-          {isClientStage && resolvedTab === 'client_success' && <ClientSuccessTab client={client} ctx={ctx} />}
-          {isClientStage && resolvedTab === 'insights'       && <InsightsTab      client={client} ctx={ctx} />}
+          {isActiveClient && resolvedTab === 'business'       && <BusinessTab      client={client} ctx={ctx} onChanged={refresh} />}
+          {isActiveClient && resolvedTab === 'marketing'      && <MarketingTab     client={client} ctx={ctx} />}
+          {isActiveClient && resolvedTab === 'creative'       && <CreativeTab      client={client} ctx={ctx} />}
+          {isActiveClient && resolvedTab === 'digital'        && <DigitalTab />}
+          {isActiveClient && resolvedTab === 'client_ops'     && <OpsTab           client={client} />}
+          {isActiveClient && resolvedTab === 'client_success' && <ClientSuccessTab client={client} ctx={ctx} />}
+          {isActiveClient && resolvedTab === 'insights'       && <InsightsTab      client={client} ctx={ctx} />}
 
-          {/* AI is shared */}
+          {/* AI is shared across both modes */}
           {resolvedTab === 'ai' && <AiTab client={client} />}
         </>
       )}

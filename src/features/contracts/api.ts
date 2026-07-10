@@ -27,6 +27,16 @@ export async function listContracts(): Promise<Contract[]> {
   if (error) { console.error('listContracts:', error.message); throw new Error(error.message) }
   return (data ?? []) as Contract[]
 }
+
+export async function listContractsByClient(clientId: string): Promise<Contract[]> {
+  const { data, error } = await supabase
+    .from('contracts')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+  if (error) { console.error('listContractsByClient:', error.message); return [] }
+  return (data ?? []) as Contract[]
+}
 export async function createContract(opts: { title: string; body: string; proposal_id?: string | null; client_id?: string | null; lead_id?: string | null; template_id?: string | null }, ctx: Ctx): Promise<Contract> {
   const { data, error } = await supabase.from('contracts').insert({
     agency_id: ctx.agencyId, title: opts.title.trim(), body: opts.body, proposal_id: opts.proposal_id ?? null,

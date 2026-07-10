@@ -7,6 +7,7 @@
 // Responses vary by kind:
 //   content / batch → { captions, hooks, hashtags, ideas, creative_direction, visual_suggestions }
 //   daily_brief     → { summary: string }
+//   analysis        → { summary: string }  (per-client project assistant)
 //   (any)           → { not_configured: true } when no key is set
 
 const CORS = {
@@ -32,6 +33,29 @@ function buildContentPrompt(brief: Record<string, unknown>, count: number): stri
     `Return ONLY valid minified JSON with this exact shape:`,
     `{"captions":[],"hooks":[],"hashtags":[],"ideas":[],"creative_direction":"","visual_suggestions":[]}`,
     `captions/hooks/ideas/hashtags/visual_suggestions are arrays of short strings; creative_direction is one paragraph.`,
+  ].join('\n')
+}
+
+function buildAnalysisPrompt(brief: Record<string, unknown>): string {
+  const question = String(brief.question ?? 'Summarize this client account.')
+  const context = Object.entries(brief)
+    .filter(([k, v]) => k !== 'question' && v != null && String(v).trim() !== '')
+    .map(([k, v]) => `- ${k.replace(/_/g, ' ')}: ${v}`)
+    .join('\n')
+  return [
+    `You are an expert account manager and project strategist at a creative marketing agency.`,
+    `A team member is asking you about one of the agency's clients. Answer their question directly.`,
+    ``,
+    `CLIENT CONTEXT:`,
+    context || '- (no details provided)',
+    ``,
+    `QUESTION: ${question}`,
+    ``,
+    `Answer in plain prose. Be direct, specific, and actionable. Use the client context provided.`,
+    `If context is missing for something asked, note it briefly and focus on what you do know.`,
+    `No bullet points, no headers, no markdown formatting. Maximum 250 words.`,
+    ``,
+    `Return ONLY valid minified JSON: {"summary":"<answer here>"}`,
   ].join('\n')
 }
 
@@ -84,6 +108,18 @@ Deno.serve(async (req) => {
 
   try {
     const { brief = {}, count = 1, kind = 'content' } = await req.json().catch(() => ({}))
+
+    // ── Per-client analysis (project assistant) ──────────────────
+    if (kind === 'analysis') {
+      const { text, error } = await callAnthropic(key, buildAnalysisPrompt(brief as Record<string, unknown>))
+      if (error) return new Response(JSON.stringify({ error }), { headers: { ...CORS, 'Content-Type': 'application/json' }, status: 200 })
+      let parsed: { summary?: string } = {}
+      try { parsed = JSON.parse(text) } catch { parsed = { summary: text } }
+      return new Response(
+        JSON.stringify({ result: { summary: parsed.summary ?? text }, model: MODEL }),
+        { headers: { ...CORS, 'Content-Type': 'application/json' }, status: 200 },
+      )
+    }
 
     // ── Daily Brief ──────────────────────────────────────────────
     if (kind === 'daily_brief') {

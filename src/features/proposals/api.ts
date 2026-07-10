@@ -19,6 +19,16 @@ export async function listProposals(): Promise<Proposal[]> {
   if (error) { console.error('listProposals:', error.message); throw new Error(error.message) }
   return (data ?? []) as Proposal[]
 }
+
+export async function listProposalsByClient(clientId: string): Promise<Proposal[]> {
+  const { data, error } = await supabase
+    .from('proposals')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+  if (error) { console.error('listProposalsByClient:', error.message); return [] }
+  return (data ?? []) as Proposal[]
+}
 export async function getProposal(id: string): Promise<{ proposal: Proposal | null; sections: ProposalSection[]; items: ProposalLineItem[] }> {
   const [{ data: p }, { data: s }, { data: i }] = await Promise.all([
     supabase.from('proposals').select('*').eq('id', id).maybeSingle(),

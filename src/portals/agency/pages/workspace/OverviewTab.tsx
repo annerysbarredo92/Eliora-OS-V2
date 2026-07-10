@@ -14,9 +14,10 @@ import type { Client } from '@/types'
 interface Props {
   client: Client
   onTabChange: (tab: string) => void
+  isActiveClient: boolean
 }
 
-export function OverviewTab({ client, onTabChange }: Props) {
+export function OverviewTab({ client, onTabChange, isActiveClient }: Props) {
   const agencyOb = useAgencyOnboarding(client.id)
   const obStats  = readProgress(agencyOb.progress)
   const activity = useActivity({ clientId: client.id, limit: 8 })
@@ -97,8 +98,8 @@ export function OverviewTab({ client, onTabChange }: Props) {
                 Follow-up: <strong style={{ color: 'var(--violet)' }}>{relativeTime(client.next_follow_up_at)}</strong>
               </p>
             )}
-            <Button variant="ghost" size="sm" style={{ marginTop: 10 }} onClick={() => onTabChange('lead_info')}>
-              View lead info →
+            <Button variant="ghost" size="sm" style={{ marginTop: 10 }} onClick={() => onTabChange(isActiveClient ? 'business' : 'lead_info')}>
+              {isActiveClient ? 'View business info →' : 'View lead info →'}
             </Button>
           </Panel>
         )}
@@ -134,14 +135,21 @@ export function OverviewTab({ client, onTabChange }: Props) {
         {/* Quick links */}
         <Panel title="Quick Navigation">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {[
+            {(isActiveClient ? [
+              { tab: 'business',        label: 'Business'        },
+              { tab: 'marketing',       label: 'Marketing'       },
+              { tab: 'onboarding',      label: 'Onboarding'      },
+              { tab: 'client_success',  label: 'Messages'        },
+              { tab: 'insights',        label: 'Insights'        },
+              { tab: 'ai',              label: 'Ask AI'          },
+            ] : [
               { tab: 'lead_info',  label: 'Lead Information' },
               { tab: 'discovery',  label: 'Discovery'        },
               { tab: 'proposal',   label: 'Proposals'        },
               { tab: 'messages',   label: 'Messages'         },
-              { tab: 'content',    label: 'Content Studio'   },
+              { tab: 'onboarding', label: 'Onboarding'       },
               { tab: 'ai',         label: 'Ask AI'           },
-            ].map(({ tab, label }) => (
+            ]).map(({ tab, label }) => (
               <button key={tab} onClick={() => onTabChange(tab)} style={{ background: 'none', border: 'none', padding: '6px 0', textAlign: 'left', fontSize: 13, color: 'var(--violet)', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>
                 {label} →
               </button>

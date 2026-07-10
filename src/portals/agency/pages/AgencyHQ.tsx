@@ -129,7 +129,7 @@ export function AgencyHQ() {
       {activeTab === 'portal'       && <PortalSettingsTab agencyId={agencyId} />}
       {activeTab === 'automations'  && <AutomationsTab ctx={ctx} />}
       {activeTab === 'billing'      && <AgencyBilling />}
-      {activeTab === 'settings'     && <AgencySettings />}
+      {activeTab === 'settings'     && <AgencySettings ctx={ctx} />}
       {activeTab === 'health'       && (
         <HealthTab progress={setup.progress} services={svc.services} packages={pkg.packages} clientCount={clients.metrics.total} />
       )}

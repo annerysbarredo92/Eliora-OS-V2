@@ -7,23 +7,57 @@ import type { Client } from '@/types'
 interface ChatMessage { role: 'user' | 'assistant'; content: string }
 
 const QUICK_ACTIONS = [
-  { label: 'Summarize Client',  query: 'Give me a concise summary of this client — their stage, key info, recent activity, and where we are in the process.' },
-  { label: 'Analyze Health',    query: 'Analyze the current health and risk factors for this project. What should I be watching out for?' },
-  { label: 'Prepare Meeting',   query: 'Prepare a meeting brief for my next call with this client. Include context, talking points, and questions to ask.' },
-  { label: 'Generate Strategy', query: 'Based on this client\'s discovery data, what content strategy would you recommend for them?' },
-  { label: 'Next Steps',        query: 'What are the recommended next steps for this project given where we are in the pipeline?' },
-  { label: 'Draft Follow-Up',   query: 'Draft a professional follow-up email I can send to this client based on our recent activity.' },
+  { label: 'Summarize Account',      query: "Summarize this client's current situation, stage, health, and the most important details I need to know." },
+  { label: 'Identify Risks',         query: 'What are the key risks and concerns for this project right now? What should I be watching closely?' },
+  { label: 'Suggest Next Steps',     query: 'Based on where we are, what are the most important next steps for this project?' },
+  { label: 'Prepare for Meeting',    query: 'Prepare a brief for my next meeting with this client — context, key talking points, and questions to ask.' },
+  { label: 'Generate Opportunities', query: 'Based on what you know about this client, what upsell, expansion, or growth opportunities exist?' },
+  { label: 'Draft Client Update',    query: 'Draft a concise, professional update I can send to this client about where we currently stand in the project.' },
 ]
 
-interface Props {
-  client: Client
+interface Props { client: Client }
+
+function buildClientBrief(client: Client, question: string): Record<string, unknown> {
+  const li = (client.lead_info ?? {}) as Record<string, string>
+  const dd = (client.discovery_data ?? {}) as Record<string, string>
+  const stage = client.pipeline_stages
+
+  const brief: Record<string, unknown> = {
+    question,
+    client_name:    client.business_name,
+    status:         client.status,
+    stage:          stage?.name ?? 'Unknown',
+    health:         client.health !== 'unknown' ? client.health : 'Not set',
+    industry:       client.industry ?? '',
+    location:       client.location ?? '',
+    lead_score:     client.lead_score != null ? `${client.lead_score}/100` : '',
+    project_value:  client.project_value_cents > 0 ? `$${(client.project_value_cents / 100).toFixed(0)}` : '',
+    next_action:    client.next_action ?? '',
+    decision_maker: client.decision_maker ?? '',
+  }
+
+  // Lead info fields (only include if populated)
+  if (li.services_interested)  brief.services_interested  = li.services_interested
+  if (li.pain_points)          brief.pain_points          = li.pain_points
+  if (li.requirements)         brief.requirements         = li.requirements
+  if (li.competitors)          brief.competitors          = li.competitors
+  if (li.sales_notes)          brief.sales_notes          = li.sales_notes
+
+  // Discovery context (only include if populated)
+  if (dd.target_audience)            brief.target_audience            = dd.target_audience
+  if (dd.brand_voice)                brief.brand_voice                = dd.brand_voice
+  if (dd.brand_mission)              brief.brand_mission              = dd.brand_mission
+  if (dd.current_content_strategy)   brief.current_content_strategy   = dd.current_content_strategy
+  if (dd.audience_pain_points)       brief.audience_pain_points       = dd.audience_pain_points
+
+  return brief
 }
 
 export function AiTab({ client }: Props) {
-  const [history, setHistory]   = useState<ChatMessage[]>([])
-  const [query, setQuery]       = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState<string | null>(null)
+  const [history, setHistory] = useState<ChatMessage[]>([])
+  const [query, setQuery]     = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -40,11 +74,19 @@ export function AiTab({ client }: Props) {
     setError(null)
 
     try {
-      const { data, error: fnErr } = await supabase.functions.invoke('ai-project', {
-        body: { project_id: client.id, query: text },
+      const brief = buildClientBrief(client, text)
+      const { data, error: fnErr } = await supabase.functions.invoke('ai-generate', {
+        body: { brief, kind: 'analysis' },
       })
-      if (fnErr || !data?.answer) throw new Error(fnErr?.message ?? 'No response from AI')
-      setHistory(h => [...h, { role: 'assistant', content: data.answer }])
+
+      if (fnErr) throw new Error(fnErr.message)
+      if (data?.not_configured) throw new Error('AI is not configured. Please set your Anthropic API key in Supabase Secrets.')
+      if (data?.error) throw new Error(data.error)
+
+      const answer = data?.result?.summary as string | undefined
+      if (!answer) throw new Error('No response received from AI.')
+
+      setHistory(h => [...h, { role: 'assistant', content: answer }])
     } catch (e) {
       setError((e as Error).message)
       setHistory(h => h.slice(0, -1))
@@ -63,7 +105,7 @@ export function AiTab({ client }: Props) {
       <div style={{ background: 'linear-gradient(105deg,#6D3DE6 0%,#9258EE 100%)', borderRadius: 'var(--radius)', padding: '18px 20px', color: '#fff' }}>
         <p style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>AI Project Assistant</p>
         <p style={{ fontSize: 13, opacity: 0.82 }}>
-          Fully wired to {client.business_name}'s data — lead info, discovery, proposals, content, messages, activity.
+          Wired to {client.business_name}'s data — lead info, discovery, stage, health, and more.
         </p>
       </div>
 
@@ -110,7 +152,7 @@ export function AiTab({ client }: Props) {
                 border: m.role === 'user' ? 'none' : '1px solid var(--hairline)',
                 borderRadius: 16, padding: '11px 15px',
               }}>
-                <p style={{ fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', fontFamily: m.role === 'assistant' ? 'var(--font-mono, monospace)' : 'var(--font-sans)' }}>
+                <p style={{ fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', fontFamily: 'var(--font-sans)' }}>
                   {m.content}
                 </p>
               </div>
@@ -130,10 +172,11 @@ export function AiTab({ client }: Props) {
         </div>
       )}
 
-      {/* Error */}
+      {/* Error — non-crashing, workspace stays usable */}
       {error && (
-        <div style={{ fontSize: 13, color: 'var(--danger)', background: 'var(--danger-bg)', padding: '10px 14px', borderRadius: 10 }}>
-          {error}
+        <div style={{ fontSize: 13, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', padding: '10px 14px', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          <span>{error}</span>
+          <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 16, flexShrink: 0, lineHeight: 1 }}>×</button>
         </div>
       )}
 
@@ -149,7 +192,7 @@ export function AiTab({ client }: Props) {
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {history.length > 0 && (
-            <button onClick={() => setHistory([])} style={{ fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+            <button onClick={() => { setHistory([]); setError(null) }} style={{ fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
               Clear chat
             </button>
           )}

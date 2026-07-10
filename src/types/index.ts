@@ -59,6 +59,7 @@ export interface ClientContact {
   phone: string | null
   title: string | null
   is_primary: boolean
+  roles?: string[]
   created_at: string
   updated_at: string
 }
@@ -632,6 +633,55 @@ export interface CalendarEvent { id: string; agency_id: string; client_id: strin
 export type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 export interface Task { id: string; agency_id: string; client_id: string | null; title: string; description: string | null; status: TaskStatus; priority: TaskPriority; due_date: string | null; assigned_to: string | null; created_by: string | null; created_at: string; updated_at: string }
+
+/* ── Email Messaging Phase 1 ────────────────────────────── */
+export interface AgencyEmailSettings {
+  id: string
+  agency_id: string
+  sender_name: string
+  reply_to_email: string | null
+  email_signature: string | null
+  email_mode: 'shared' | 'custom'
+  sending_enabled: boolean
+  custom_sender_email: string | null
+  custom_domain_status: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type EmailMessageStatus = 'draft' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'failed'
+
+export interface EmailMessage {
+  id: string
+  agency_id: string
+  client_id: string | null
+  contact_id: string | null
+  to_email: string
+  to_name: string | null
+  from_email: string
+  from_name: string | null
+  subject: string
+  body_html: string | null
+  body_text: string | null
+  provider_message_id: string | null
+  status: EmailMessageStatus
+  opened_at: string | null
+  clicked_at: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface EmailEvent {
+  id: string
+  agency_id: string
+  email_message_id: string
+  provider: string
+  event_type: string
+  event_payload: Record<string, unknown>
+  occurred_at: string
+  created_at: string
+}
 
 /* ── Wave 4: AI & Automation ────────────────────────────── */
 export interface AiResult { captions: string[]; hooks: string[]; hashtags: string[]; ideas: string[]; creative_direction: string; visual_suggestions: string[] }

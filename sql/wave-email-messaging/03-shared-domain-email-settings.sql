@@ -1,0 +1,9 @@
+-- ============================================================
+-- Wave: Email Messaging — Step 03  (SUPERSEDED)
+--
+-- This file has been absorbed into the rewritten Step 02.
+-- All schema changes it described now live in:
+--   02-agency-email-settings.sql
+--
+-- This file is safe to run but does nothing.
+-- ============================================================

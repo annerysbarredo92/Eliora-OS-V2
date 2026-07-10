@@ -29,8 +29,12 @@ export interface StageSummary extends PipelineStage {
 const PROJECT_SELECT = '*, client_contacts(*), pipeline_stages!clients_stage_id_fkey(*)'
 
 export async function getProjectStages(agencyId: string): Promise<PipelineStage[]> {
-  await seedStages(agencyId)
-  return listStages()
+  const existing = await listStages()
+  if (existing.length === 0) {
+    await seedStages(agencyId)
+    return listStages()
+  }
+  return existing
 }
 
 export async function getPipelineSummary(agencyId: string): Promise<StageSummary[]> {

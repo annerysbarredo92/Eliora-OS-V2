@@ -32,7 +32,7 @@ export function DailyBriefWidget({ brief, context, agencyId, actorId, onGenerate
         id: '', agency_id: agencyId, client_id: null, actor_id: actorId,
         kind: 'daily_brief', model: outcome.model ?? null,
         brief: context,
-        result: outcome.result as Record<string, unknown>,
+        result: outcome.result as unknown as Record<string, unknown>,
         created_at: new Date().toISOString(),
       }
       onGenerated(syntheticGen)

@@ -23,6 +23,8 @@ export async function createStage(name: string, ctx: Ctx): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+// @deprecated The `leads` table is empty and unused. The app uses `clients` as projects.
+// Do not add new usages. Safe to delete in a future cleanup sprint once confirmed.
 export interface LeadFormValues {
   business_name: string; name: string; email: string; phone: string; website: string
   source: string; stage_id: string; estimated_value_cents: number; owner_id: string; notes: string

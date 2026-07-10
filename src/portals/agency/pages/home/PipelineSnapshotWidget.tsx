@@ -1,16 +1,8 @@
 import { Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { money } from '@/features/operations/helpers'
+import { STAGE_COLORS } from '@/features/projects/helpers'
 import type { StageSummary } from '@/features/projects/api'
-
-const STAGE_COLOR: Record<string, string> = {
-  'New Inquiry / Lead': '#6D3DE6',
-  'Discovery Call':     '#4F8EF7',
-  'Proposal Sent':      '#F0A443',
-  'Proposal Signed':    '#10B981',
-  'Onboarding':         '#9258EE',
-  'Client':             '#059669',
-}
 
 interface Props {
   summary: StageSummary[]
@@ -35,7 +27,7 @@ export function PipelineSnapshotWidget({ summary, loading }: Props) {
       ) : (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto', paddingBottom: 2 }}>
           {summary.map((s, i) => {
-            const color = STAGE_COLOR[s.name] ?? 'var(--violet)'
+            const color = STAGE_COLORS[s.name] ?? 'var(--violet)'
             return (
               <Fragment key={s.id}>
                 <button
