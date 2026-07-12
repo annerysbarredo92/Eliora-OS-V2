@@ -51,7 +51,7 @@ serve(async (req) => {
       admin.from('messages').select('body, kind, author_role, created_at').eq('client_id', project_id).eq('is_client_visible', true).order('created_at', { ascending: false }).limit(15),
       admin.from('activity_log').select('action, description, created_at').eq('client_id', project_id).order('created_at', { ascending: false }).limit(20),
       admin.from('invoices').select('title, status, total_cents, due_date').eq('client_id', project_id).order('created_at', { ascending: false }).limit(5),
-      admin.from('client_products_services').select('name, type, description, target_audience, benefits, pricing_type, price_cents, price_min_cents, price_max_cents, price_label, status, include_in_ai_context').eq('client_id', project_id).eq('include_in_ai_context', true).order('sort_order'),
+      admin.from('client_products_services').select('name, type, description, target_audience, benefits, pricing_type, price_cents, price_min_cents, price_max_cents, price_label, status, include_in_ai_context').eq('client_id', project_id).eq('status', 'active').eq('include_in_ai_context', true).order('sort_order'),
       admin.from('goals').select('title, description, status, current_value, target_value, due_date, time_period, owner').eq('client_id', project_id).eq('is_archived', false).order('created_at', { ascending: false }).limit(15),
       admin.from('kpis').select('name, description, metric_key, current_value, target_value, unit, period, status').eq('client_id', project_id).eq('is_archived', false).order('created_at', { ascending: false }).limit(20),
       admin.from('client_competitors').select('name, website, description, strengths, weaknesses').eq('client_id', project_id).order('created_at', { ascending: false }).limit(10),

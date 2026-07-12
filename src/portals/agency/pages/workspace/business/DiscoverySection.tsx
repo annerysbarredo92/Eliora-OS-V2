@@ -127,6 +127,12 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
   const [aiGenerating, setAiGenerating] = useState(false)
   const [aiDraft, setAiDraft]           = useState<string | null>(null)
   const [aiError, setAiError]           = useState<string | null>(null)
+  const [freshSyncErr, setFreshSyncErr] = useState<string | null>(null)
+
+  async function stampDiscoveryFreshness() {
+    await updateDiscoveryData(client.id, { discovery_sources_updated_at: new Date().toISOString() }, ctx)
+    onChanged()
+  }
 
   async function generateAISummary() {
     setAiGenerating(true); setAiError(null)
@@ -187,6 +193,14 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
         await createDiscoveryNote(client.id, noteForm, ctx)
       }
       setNoteDrawer(false); refreshNotes()
+      try {
+        setFreshSyncErr(null)
+        await stampDiscoveryFreshness()
+      } catch {
+        console.error('Discovery freshness stamp failed after note save')
+        setFreshSyncErr('Note saved but freshness sync failed — regenerate the summary if needed.')
+        onChanged()
+      }
     } catch (e) {
       setNoteError(e instanceof Error ? e.message : 'Failed to save note')
     } finally { setNoteSaving(false) }
@@ -200,6 +214,14 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
     try {
       await deleteDiscoveryNote(deletingNote.id, client.id, ctx)
       setDeletingNote(null); refreshNotes()
+      try {
+        setFreshSyncErr(null)
+        await stampDiscoveryFreshness()
+      } catch {
+        console.error('Discovery freshness stamp failed after note delete')
+        setFreshSyncErr('Note deleted but freshness sync failed — regenerate the summary if needed.')
+        onChanged()
+      }
     } catch (e) {
       setNoteDeleteError(e instanceof Error ? e.message : 'Delete failed')
     } finally { setNoteDeleting(false) }
@@ -246,6 +268,14 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
     try {
       await uploadFile(file, { folderId: discFolderId, isClientVisible: false }, filesCtx)
       setTick(t => t + 1)
+      try {
+        setFreshSyncErr(null)
+        await stampDiscoveryFreshness()
+      } catch {
+        console.error('Discovery freshness stamp failed after document upload')
+        setDiscError('Document uploaded but freshness sync failed — regenerate the summary if needed.')
+        onChanged()
+      }
     } catch (e) {
       setDiscUploadErr(e instanceof Error ? e.message : 'Upload failed')
     } finally { setDiscUploading(false) }
@@ -256,6 +286,14 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
     try {
       await deleteFile(asset, filesCtx)
       setTick(t => t + 1)
+      try {
+        setFreshSyncErr(null)
+        await stampDiscoveryFreshness()
+      } catch {
+        console.error('Discovery freshness stamp failed after document delete')
+        setDiscError('Document deleted but freshness sync failed — regenerate the summary if needed.')
+        onChanged()
+      }
     } catch (e) {
       setDiscError(e instanceof Error ? e.message : 'Delete failed')
     }
@@ -290,6 +328,7 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
         </div>
         <div style={{ padding: '16px 18px' }}>
           {aiError && <p style={{ fontSize: 12.5, color: 'var(--danger)', marginBottom: 10 }}>{aiError}</p>}
+          {freshSyncErr && <p style={{ fontSize: 12.5, color: 'var(--warning)', marginBottom: 10 }}>{freshSyncErr}</p>}
           {aiDraft !== null ? (
             <div>
               <p style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--violet)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>AI Draft — Review before applying</p>
