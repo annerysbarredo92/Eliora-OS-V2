@@ -96,3 +96,54 @@ body {
 .animate-fade-up    { animation: fade-up    var(--duration-slow) var(--ease-out) both; }
 .animate-scale-in   { animation: scale-in   var(--duration-slow) var(--ease-out) both; }
 .animate-slide-left { animation: slide-in-left var(--duration-slow) var(--ease-out) both; }
+.animate-slide-right { animation: slide-in-right 250ms var(--ease-out) both; }
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  from { background-position: -400px 0; }
+  to   { background-position: 400px 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, var(--lavender-soft) 25%, rgba(255,255,255,0.7) 50%, var(--lavender-soft) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slide-up 240ms var(--ease-out) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-fade-up,
+  .animate-scale-in,
+  .animate-slide-left,
+  .animate-slide-right,
+  .animate-slide-up { animation: none; opacity: 1; transform: none; }
+  .animate-shimmer { animation: none; background: var(--lavender-soft); }
+}
+
+/* ── Business workspace: content padding for mobile bottom nav ── */
+@media (max-width: 767px) {
+  .business-content-padded {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ── DrawerPanel: full-screen on small screens ─────────────────── */
+@media (max-width: 480px) {
+  .drawer-panel-inner {
+    max-width: 100% !important;
+    border-left: none !important;
+    border-radius: 0 !important;
+  }
+  .drawer-panel-footer {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}

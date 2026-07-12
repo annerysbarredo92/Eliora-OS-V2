@@ -202,14 +202,18 @@ export async function updateClient(id: string, values: ClientFormValues, ctx: Ct
 
 export async function updateCompanyInfo(
   id: string,
-  patch: {
+  patch: Partial<{
     business_name: string
     industry: string | null
+    sub_industry: string | null
     website: string | null
+    business_email: string | null
     business_phone: string | null
     business_address: string | null
     location: string | null
-  },
+    timezone: string | null
+    company_description: string | null
+  }>,
   ctx: Ctx,
 ): Promise<void> {
   const { error } = await supabase
@@ -220,21 +224,19 @@ export async function updateCompanyInfo(
   await logActivity({
     agencyId: ctx.agencyId, actorId: ctx.actorId, clientId: id,
     action: 'client.updated', entityType: 'client', entityId: id,
-    description: `Updated company information for ${patch.business_name}`,
+    description: `Updated company information${patch.business_name ? ` for ${patch.business_name}` : ''}`,
   })
 }
 
 export async function updateDiscoveryData(
   id: string,
-  current: Record<string, unknown>,
   patch: Record<string, unknown>,
   ctx: Ctx,
 ): Promise<void> {
-  const merged = { ...current, ...patch }
-  const { error } = await supabase
-    .from('clients')
-    .update({ discovery_data: merged, updated_by: ctx.actorId })
-    .eq('id', id)
+  const { error } = await supabase.rpc('patch_client_discovery_data', {
+    p_client_id: id,
+    p_patch:     patch,
+  })
   if (error) { console.error('updateDiscoveryData:', error.message); throw new Error(error.message) }
   await logActivity({
     agencyId: ctx.agencyId, actorId: ctx.actorId, clientId: id,
@@ -253,54 +255,80 @@ export interface ContactFormValues {
   phone: string
   is_primary: boolean
   roles: string[]
+  preferred_communication: string
+  birthday: string
+  notes: string
 }
 
-/** Returns true if `roles` column exists on client_contacts. */
-function isRolesError(err: { message?: string; code?: string }): boolean {
-  return err.code === '42703' || (err.message?.toLowerCase().includes('roles') ?? false)
+export async function findContactByEmail(
+  email: string,
+  clientId: string,
+  excludeContactId?: string,
+): Promise<import('@/types').ClientContact | null> {
+  const trimmed = email.trim()
+  if (!trimmed) return null
+
+  // Server-side case-insensitive match scoped to this client only.
+  // RLS further enforces agency ownership.
+  let q = supabase
+    .from('client_contacts')
+    .select('*')
+    .eq('client_id', clientId)
+    .ilike('email', trimmed)
+    .limit(1)
+
+  if (excludeContactId) q = q.neq('id', excludeContactId)
+
+  const { data } = await q
+  return (data?.[0] as import('@/types').ClientContact) ?? null
 }
 
 export async function createContact(
   clientId: string,
   values: ContactFormValues,
   ctx: Ctx,
-): Promise<{ rolesSkipped: boolean }> {
-  if (values.is_primary) {
-    await supabase.from('client_contacts')
-      .update({ is_primary: false })
-      .eq('client_id', clientId)
-      .eq('is_primary', true)
+): Promise<void> {
+  const payload = {
+    agency_id:                ctx.agencyId,
+    client_id:                clientId,
+    first_name:               values.first_name.trim(),
+    last_name:                values.last_name.trim() || null,
+    title:                    values.title.trim() || null,
+    email:                    values.email.trim() || null,
+    phone:                    values.phone.trim() || null,
+    is_primary:               false,
+    roles:                    values.roles,
+    preferred_communication:  values.preferred_communication || null,
+    birthday:                 values.birthday || null,
+    notes:                    values.notes.trim() || null,
+    created_by:               ctx.actorId,
+    updated_by:               ctx.actorId,
   }
 
-  const base = {
-    agency_id:  ctx.agencyId,
-    client_id:  clientId,
-    first_name: values.first_name.trim(),
-    last_name:  values.last_name.trim() || null,
-    title:      values.title.trim() || null,
-    email:      values.email.trim() || null,
-    phone:      values.phone.trim() || null,
-    is_primary: values.is_primary,
-  }
+  const { data, error } = await supabase
+    .from('client_contacts')
+    .insert(payload)
+    .select('id')
+    .single()
 
-  let rolesSkipped = false
-  const { error } = await supabase.from('client_contacts').insert({ ...base, roles: values.roles })
-  if (error) {
-    if (isRolesError(error)) {
-      rolesSkipped = true
-      const { error: e2 } = await supabase.from('client_contacts').insert(base)
-      if (e2) throw new Error(e2.message)
-    } else {
-      throw new Error(error.message)
+  if (error) { console.error('createContact:', error.message); throw new Error(error.message) }
+
+  if (values.is_primary && data?.id) {
+    const { error: rpcErr } = await supabase.rpc('set_primary_contact', {
+      p_client_id:  clientId,
+      p_contact_id: data.id,
+    })
+    if (rpcErr) {
+      console.error('set_primary_contact (create):', rpcErr.message)
+      throw new Error('Contact saved but could not assign as primary. Please retry from the contact list.')
     }
   }
 
   await logActivity({
     agencyId: ctx.agencyId, actorId: ctx.actorId, clientId,
     action: 'contact.created', entityType: 'contact',
-    description: `Added contact: ${base.first_name} ${base.last_name ?? ''}`.trim(),
+    description: `Added contact: ${payload.first_name}${payload.last_name ? ' ' + payload.last_name : ''}`,
   })
-  return { rolesSkipped }
 }
 
 export async function updateContact(
@@ -308,43 +336,46 @@ export async function updateContact(
   clientId: string,
   values: ContactFormValues,
   ctx: Ctx,
-): Promise<{ rolesSkipped: boolean }> {
+): Promise<void> {
+  const dataFields = {
+    first_name:               values.first_name.trim(),
+    last_name:                values.last_name.trim() || null,
+    title:                    values.title.trim() || null,
+    email:                    values.email.trim() || null,
+    phone:                    values.phone.trim() || null,
+    roles:                    values.roles,
+    preferred_communication:  values.preferred_communication || null,
+    birthday:                 values.birthday || null,
+    notes:                    values.notes.trim() || null,
+    updated_by:               ctx.actorId,
+  }
+
+  const { error } = await supabase
+    .from('client_contacts')
+    .update(dataFields)
+    .eq('id', contactId)
+
+  if (error) { console.error('updateContact:', error.message); throw new Error(error.message) }
+
+  // Primary is only ever assigned via the atomic RPC, which demotes the previous
+  // primary in the same transaction. Directly writing is_primary=false is removed
+  // because the UI prevents unchecking primary on the current primary contact.
   if (values.is_primary) {
-    await supabase.from('client_contacts')
-      .update({ is_primary: false })
-      .eq('client_id', clientId)
-      .eq('is_primary', true)
-      .neq('id', contactId)
-  }
-
-  const base = {
-    first_name: values.first_name.trim(),
-    last_name:  values.last_name.trim() || null,
-    title:      values.title.trim() || null,
-    email:      values.email.trim() || null,
-    phone:      values.phone.trim() || null,
-    is_primary: values.is_primary,
-    updated_by: ctx.actorId,
-  }
-
-  let rolesSkipped = false
-  const { error } = await supabase.from('client_contacts').update({ ...base, roles: values.roles }).eq('id', contactId)
-  if (error) {
-    if (isRolesError(error)) {
-      rolesSkipped = true
-      const { error: e2 } = await supabase.from('client_contacts').update(base).eq('id', contactId)
-      if (e2) throw new Error(e2.message)
-    } else {
-      throw new Error(error.message)
+    const { error: rpcErr } = await supabase.rpc('set_primary_contact', {
+      p_client_id:  clientId,
+      p_contact_id: contactId,
+    })
+    if (rpcErr) {
+      console.error('set_primary_contact (update):', rpcErr.message)
+      throw new Error('Contact saved but could not assign as primary. Please retry.')
     }
   }
 
   await logActivity({
     agencyId: ctx.agencyId, actorId: ctx.actorId, clientId,
     action: 'contact.updated', entityType: 'contact',
-    description: `Updated contact: ${base.first_name} ${base.last_name ?? ''}`.trim(),
+    description: `Updated contact: ${dataFields.first_name}${dataFields.last_name ? ' ' + dataFields.last_name : ''}`,
   })
-  return { rolesSkipped }
 }
 
 export async function deleteContact(

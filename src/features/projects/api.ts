@@ -143,18 +143,6 @@ export async function updateLeadInfo(
   })
 }
 
-export async function updateDiscoveryData(
-  projectId: string, discoveryData: Record<string, unknown>, ctx: Ctx,
-): Promise<void> {
-  await updateProjectFields(projectId, { discovery_data: discoveryData }, ctx)
-  await logActivity({
-    agencyId: ctx.agencyId, actorId: ctx.actorId,
-    action: 'project.discovery_updated', entityType: 'client',
-    entityId: projectId, clientId: projectId,
-    description: 'Updated discovery data',
-  })
-}
-
 export async function checkProposalExpiry(): Promise<void> {
   const { error } = await supabase.rpc('expire_overdue_proposals')
   if (error) console.warn('expire_overdue_proposals:', error.message)

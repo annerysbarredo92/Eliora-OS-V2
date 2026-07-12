@@ -78,7 +78,7 @@ export function AgencyWorkspace() {
   const { client, loading, error, refresh } = useClient(projectId)
   const { stages }    = useProjectStages()
 
-  const [tab, setTab]                 = useState(() => slugToId(searchParams.get('tab') ?? 'overview'))
+  const rawTab                        = slugToId(searchParams.get('tab') ?? 'overview')
   const [editing, setEditing]         = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiving, setArchiving]     = useState(false)
@@ -151,10 +151,9 @@ export function AgencyWorkspace() {
   const TABS           = isActiveClient ? CLIENT_TABS : LEAD_TABS
 
   // If current tab doesn't exist in the active tab set, fall back to overview
-  const resolvedTab = TABS.find(t => t.id === tab) ? tab : 'overview'
+  const resolvedTab = TABS.find(t => t.id === rawTab) ? rawTab : 'overview'
 
   function changeTab(id: string) {
-    setTab(id)
     setSearchParams({ tab: idToSlug(id) }, { replace: true })
   }
 
@@ -262,7 +261,7 @@ export function AgencyWorkspace() {
           {resolvedTab === 'onboarding' && <OnboardingTab client={client} ctx={ctx} />}
 
           {/* Client-stage workspace tabs */}
-          {isActiveClient && resolvedTab === 'business'       && <BusinessTab      client={client} ctx={ctx} onChanged={refresh} />}
+          {isActiveClient && resolvedTab === 'business'       && <BusinessTab      client={client} ctx={ctx} onChanged={refresh} onRequestAI={() => changeTab('ai')} />}
           {isActiveClient && resolvedTab === 'marketing'      && <MarketingTab     client={client} ctx={ctx} />}
           {isActiveClient && resolvedTab === 'creative'       && <CreativeTab      client={client} ctx={ctx} />}
           {isActiveClient && resolvedTab === 'digital'        && <DigitalTab />}

@@ -1,0 +1,229 @@
+import type { Client } from '@/types'
+
+/* ── Business Health (profile completeness) ─────────────── */
+
+export type DimensionStatus = 'complete' | 'partial' | 'empty'
+
+export interface HealthDimension {
+  id: string
+  label: string
+  score: number      // 0–100
+  max: number        // always 100
+  status: DimensionStatus
+  sectionId: string  // maps to ?section=XXX URL param
+  tip: string | null // what's missing
+}
+
+export interface BusinessHealthResult {
+  score: number                   // 0–100, weighted average
+  dimensions: HealthDimension[]
+}
+
+function pct(filled: number, total: number): number {
+  return total === 0 ? 0 : Math.round((filled / total) * 100)
+}
+
+function dimStatus(score: number): DimensionStatus {
+  if (score === 100) return 'complete'
+  if (score > 0) return 'partial'
+  return 'empty'
+}
+
+export function computeBusinessHealth(client: Client): BusinessHealthResult {
+  const d = client.discovery_data ?? {}
+
+  /* 1. Company Identity */
+  const identityFields = [
+    !!client.business_name,
+    !!client.industry,
+    !!client.sub_industry,
+    !!client.website,
+    !!client.business_email || !!client.business_phone,
+    !!client.location,
+    !!client.timezone,
+  ]
+  const identityScore = pct(identityFields.filter(Boolean).length, identityFields.length)
+  const identityTips = [
+    !client.industry && 'industry',
+    !client.sub_industry && 'sub-industry',
+    !client.website && 'website',
+    (!client.business_email && !client.business_phone) && 'contact email or phone',
+    !client.location && 'location',
+    !client.timezone && 'timezone',
+  ].filter(Boolean) as string[]
+
+  /* 2. Business Context */
+  const contextFields = [
+    !!client.company_description,
+    !!(d.founded_year),
+    !!(d.employee_count),
+    !!(d.business_model),
+    !!(d.geographic_reach),
+    !!(d.service_area),
+  ]
+  const contextScore = pct(contextFields.filter(Boolean).length, contextFields.length)
+  const contextTips = [
+    !client.company_description && 'company description',
+    !d.founded_year && 'founding year',
+    !d.employee_count && 'team size',
+    !d.business_model && 'business model',
+  ].filter(Boolean) as string[]
+
+  /* 3. Social Presence */
+  const socialUrls: Record<string, string> = (d.social_urls as Record<string, string>) ?? {}
+  const socialPlatforms = ['linkedin', 'instagram', 'facebook', 'twitter', 'youtube', 'tiktok']
+  const socialFilled = socialPlatforms.filter(p => !!socialUrls[p]).length
+  const socialScore = pct(socialFilled, socialPlatforms.length)
+
+  /* 4. Contacts */
+  const contacts = client.client_contacts ?? []
+  const hasPrimary = contacts.some(c => c.is_primary)
+  const hasMultiple = contacts.length >= 2
+  const contactScore = pct(
+    (hasPrimary ? 2 : contacts.length > 0 ? 1 : 0) + (hasMultiple ? 1 : 0),
+    3,
+  )
+  const contactTips = [
+    contacts.length === 0 && 'add a contact',
+    !hasPrimary && contacts.length > 0 && 'set a primary contact',
+    !hasMultiple && 'add additional contacts',
+  ].filter(Boolean) as string[]
+
+  /* 5. Discovery (business hours + internal notes) */
+  const discoveryFields = [
+    !!(d.business_hours),
+    !!client.internal_notes,
+    !!(d.target_audience),
+    !!(d.brand_voice),
+  ]
+  const discoveryScore = pct(discoveryFields.filter(Boolean).length, discoveryFields.length)
+  const discoveryTips = [
+    !d.business_hours && 'business hours',
+    !d.target_audience && 'target audience',
+    !d.brand_voice && 'brand voice',
+  ].filter(Boolean) as string[]
+
+  const dimensions: HealthDimension[] = [
+    {
+      id: 'identity',
+      label: 'Company Identity',
+      score: identityScore,
+      max: 100,
+      status: dimStatus(identityScore),
+      sectionId: 'company',
+      tip: identityTips.length ? `Missing: ${identityTips.slice(0, 2).join(', ')}` : null,
+    },
+    {
+      id: 'context',
+      label: 'Business Context',
+      score: contextScore,
+      max: 100,
+      status: dimStatus(contextScore),
+      sectionId: 'company',
+      tip: contextTips.length ? `Missing: ${contextTips.slice(0, 2).join(', ')}` : null,
+    },
+    {
+      id: 'social',
+      label: 'Social Presence',
+      score: socialScore,
+      max: 100,
+      status: dimStatus(socialScore),
+      sectionId: 'company',
+      tip: socialScore < 100 ? `${socialPlatforms.length - socialFilled} platforms missing` : null,
+    },
+    {
+      id: 'contacts',
+      label: 'Contacts',
+      score: contactScore,
+      max: 100,
+      status: dimStatus(contactScore),
+      sectionId: 'contacts',
+      tip: contactTips.length ? contactTips[0] : null,
+    },
+    {
+      id: 'discovery',
+      label: 'Discovery Data',
+      score: discoveryScore,
+      max: 100,
+      status: dimStatus(discoveryScore),
+      sectionId: 'discovery',
+      tip: discoveryTips.length ? `Missing: ${discoveryTips.slice(0, 2).join(', ')}` : null,
+    },
+  ]
+
+  // Weighted score: identity 30, context 20, social 15, contacts 20, discovery 15
+  const weights = [0.30, 0.20, 0.15, 0.20, 0.15]
+  const score = Math.round(
+    dimensions.reduce((sum, dim, i) => sum + dim.score * weights[i], 0),
+  )
+
+  return { score, dimensions }
+}
+
+/* ── AI Readiness ──────────────────────────────────────── */
+
+export interface AISignal {
+  id: string
+  label: string
+  complete: boolean
+  sectionId: string
+}
+
+export interface AIReadinessResult {
+  score: number       // 0–100 (percent of signals complete)
+  complete: number
+  total: number
+  signals: AISignal[]
+}
+
+// Signals are limited to data fillable through Wave 2 (Company + Contacts sections).
+// Signals pointing to Brand, Discovery, or Goals sections are deferred to those waves.
+export function computeAIReadiness(client: Client): AIReadinessResult {
+  const d = client.discovery_data ?? {}
+  const contacts = client.client_contacts ?? []
+
+  const signals: AISignal[] = [
+    {
+      id: 'description',
+      label: 'Company description',
+      complete: !!client.company_description,
+      sectionId: 'company',
+    },
+    {
+      id: 'industry',
+      label: 'Industry & sub-industry',
+      complete: !!client.industry && !!client.sub_industry,
+      sectionId: 'company',
+    },
+    {
+      id: 'business_model',
+      label: 'Business model',
+      complete: !!(d.business_model),
+      sectionId: 'company',
+    },
+    {
+      id: 'social',
+      label: 'Social media profiles',
+      complete: !!(d.social_urls && Object.keys(d.social_urls as object).length > 0),
+      sectionId: 'company',
+    },
+    {
+      id: 'hours',
+      label: 'Business hours',
+      complete: !!(d.business_hours),
+      sectionId: 'company',
+    },
+    {
+      id: 'contact',
+      label: 'Primary contact',
+      complete: contacts.some(c => c.is_primary),
+      sectionId: 'contacts',
+    },
+  ]
+
+  const complete = signals.filter(s => s.complete).length
+  const total = signals.length
+  const score = Math.round((complete / total) * 100)
+
+  return { score, complete, total, signals }
+}

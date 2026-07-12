@@ -59,7 +59,10 @@ export interface ClientContact {
   phone: string | null
   title: string | null
   is_primary: boolean
-  roles?: string[]
+  roles: string[]
+  preferred_communication: string | null
+  birthday: string | null
+  notes: string | null
   created_at: string
   updated_at: string
 }
@@ -69,9 +72,13 @@ export interface Client {
   agency_id: string
   business_name: string
   industry: string | null
+  sub_industry: string | null
   website: string | null
+  business_email: string | null
   business_phone: string | null
   business_address: string | null
+  timezone: string | null
+  company_description: string | null
   status: ClientStatus
   health: ClientHealth
   package_name: string | null

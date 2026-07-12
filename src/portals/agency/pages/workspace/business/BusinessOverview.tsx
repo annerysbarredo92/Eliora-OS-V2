@@ -8,6 +8,7 @@ import { listContractsByClient } from '@/features/contracts/api'
 import { listInvoices } from '@/features/billing/api'
 import { contactName, HEALTH_LABEL, HEALTH_BADGE, relativeTime } from '@/features/clients/helpers'
 import { money } from '@/features/operations/helpers'
+import { computeBusinessHealth, computeAIReadiness } from './businessHealth'
 import type { Client, Proposal, Contract, Invoice, GoalStatus } from '@/types'
 
 interface Props {
@@ -33,10 +34,6 @@ const GOAL_STATUS_BADGE: Record<GoalStatus, 'success' | 'warning' | 'danger' | '
 const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
   on_track: 'On track', at_risk: 'At risk', achieved: 'Achieved', missed: 'Missed',
 }
-
-const CONNECTED_PLATFORMS = [
-  'Google Analytics', 'Meta Ads', 'Google Search Console', 'TikTok Ads', 'YouTube', 'Mailchimp',
-]
 
 const truncate = (s: unknown, len = 120): string => {
   const str = typeof s === 'string' ? s.trim() : ''
@@ -86,42 +83,58 @@ const LINK_BTN: React.CSSProperties = {
   display: 'block',
 }
 
+function healthColor(score: number): string {
+  if (score >= 80) return 'var(--success)'
+  if (score >= 50) return 'var(--warning)'
+  return 'var(--danger)'
+}
+
 export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) {
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [dealsLoading, setDealsLoading] = useState(true)
+  const [accountLoading, setAccountLoading] = useState(true)
+  const [proposalsError, setProposalsError] = useState(false)
+  const [contractsError, setContractsError] = useState(false)
+  const [invoicesError, setInvoicesError] = useState(false)
 
   const { goals, loading: goalsLoading } = useGoals(client.id)
   const { kpis } = useKpis(client.id)
   const { items: activityItems, loading: activityLoading } = useActivity({ clientId: client.id, limit: 6 })
 
   useEffect(() => {
-    setDealsLoading(true)
-    Promise.all([
+    setAccountLoading(true)
+    setProposalsError(false)
+    setContractsError(false)
+    setInvoicesError(false)
+
+    Promise.allSettled([
       listProposalsByClient(client.id),
       listContractsByClient(client.id),
       listInvoices(client.id),
-    ])
-      .then(([p, c, i]) => { setProposals(p); setContracts(c); setInvoices(i) })
-      .catch(() => {})
-      .finally(() => setDealsLoading(false))
+    ]).then(([pResult, cResult, iResult]) => {
+      if (pResult.status === 'fulfilled') setProposals(pResult.value)
+      else { console.error('listProposalsByClient:', pResult.reason); setProposalsError(true) }
+
+      if (cResult.status === 'fulfilled') setContracts(cResult.value)
+      else { console.error('listContractsByClient:', cResult.reason); setContractsError(true) }
+
+      if (iResult.status === 'fulfilled') setInvoices(iResult.value)
+      else { console.error('listInvoices:', iResult.reason); setInvoicesError(true) }
+    }).finally(() => setAccountLoading(false))
   }, [client.id])
 
-  // Contacts
   const contacts = client.client_contacts ?? []
   const keyContacts = contacts
     .filter(c => c.is_primary || c.roles?.includes('decision_maker'))
     .slice(0, 3)
   const displayContacts = keyContacts.length > 0 ? keyContacts : contacts.slice(0, 2)
 
-  // Goals
   const goalCounts = goals.reduce(
     (acc, g) => { acc[g.status] = (acc[g.status] ?? 0) + 1; return acc },
     {} as Partial<Record<GoalStatus, number>>,
   )
 
-  // Deals
   const latestProposal = proposals[0] ?? null
   const latestContract = contracts[0] ?? null
   const activeRetainer = invoices.find(
@@ -131,26 +144,161 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
     i => ['overdue', 'sent'].includes(i.status) && i.amount_paid_cents < i.total_cents,
   ) ?? null
 
-  const brandVoice    = dv(client.discovery_data, 'brand_voice')
-  const brandMission  = dv(client.discovery_data, 'brand_mission')
-  const brandTagline  = dv(client.discovery_data, 'current_tagline')
-  const hasBrand      = !!(brandVoice || brandMission || brandTagline)
+  const brandVoice   = dv(client.discovery_data, 'brand_voice')
+  const brandMission = dv(client.discovery_data, 'brand_mission')
+  const brandTagline = dv(client.discovery_data, 'current_tagline')
+  const hasBrand     = !!(brandVoice || brandMission || brandTagline)
+
+  const health    = computeBusinessHealth(client)
+  const readiness = computeAIReadiness(client)
+
+  // Priority alert: pick the single highest-priority real issue.
+  // Never fire from a data source that failed to load — that would show a false alert.
+  const priorityAlert: string | null = (() => {
+    if (!accountLoading && !invoicesError) {
+      const overdue = invoices.find(i => i.status === 'overdue')
+      if (overdue) return `Overdue invoice: ${overdue.title ?? overdue.number ?? 'Invoice'} — ${money(overdue.total_cents - overdue.amount_paid_cents)} owed`
+    }
+    if (!accountLoading && !contractsError) {
+      const expiredContract = contracts.find(c => c.status === 'expired')
+      if (expiredContract) return `Contract expired: ${expiredContract.title}`
+    }
+    if (contacts.length > 0 && !contacts.some(c => c.is_primary)) {
+      return 'No primary contact set — assign one in the Contacts section.'
+    }
+    if (contacts.length === 0) return 'No contacts added yet — add at least one to track this account.'
+    return null
+  })()
+
+  // Setup checklist: show for new/incomplete clients
+  const showChecklist = health.score < 50 || client.status === 'onboarding' || client.status === 'lead'
+  const checklistItems = health.dimensions
+    .filter(d => d.status !== 'complete')
+    .map(d => ({ label: d.label, tip: d.tip, sectionId: d.sectionId }))
+    .slice(0, 5)
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-      {/* ── Company ───────────────────────────────────────────── */}
+      {/* ── Priority Alert ────────────────────────────────────── */}
+      {priorityAlert && (
+        <div
+          style={{
+            ...CARD,
+            gridColumn: '1 / -1',
+            borderColor: 'var(--danger)',
+            background: 'color-mix(in srgb, var(--danger) 8%, var(--surface-solid))',
+            display: 'flex',
+            gap: 10,
+            alignItems: 'flex-start',
+            padding: '14px 20px',
+          }}
+        >
+          <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
+          <p style={{ fontSize: 13.5, color: 'var(--ink)', fontWeight: 500, lineHeight: 1.5 }}>
+            {priorityAlert}
+          </p>
+        </div>
+      )}
+
+      {/* ── Business Health ───────────────────────────────────── */}
+      <div style={CARD}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <p style={SECTION_LABEL}>Business Health</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 22, fontWeight: 800, color: healthColor(health.score), lineHeight: 1 }}>
+              {health.score}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>/100</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {health.dimensions.map(dim => (
+            <div key={dim.id}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <button
+                  onClick={() => onSectionChange(dim.sectionId)}
+                  style={{
+                    fontSize: 12, color: 'var(--ink-2)', fontWeight: 500,
+                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)', textAlign: 'left',
+                  }}
+                >
+                  {dim.label}
+                </button>
+                <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{dim.score}%</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 99, background: 'var(--hairline)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${dim.score}%`,
+                  borderRadius: 99,
+                  background: healthColor(dim.score),
+                  transition: 'width 400ms ease',
+                }} />
+              </div>
+              {dim.tip && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{dim.tip}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── AI Readiness ──────────────────────────────────────── */}
+      <div style={CARD}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <p style={SECTION_LABEL}>AI Readiness</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 22, fontWeight: 800, color: healthColor(readiness.score), lineHeight: 1 }}>
+              {readiness.complete}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>/{readiness.total} signals</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {readiness.signals.map(sig => (
+            <div key={sig.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, flexShrink: 0, color: sig.complete ? 'var(--success)' : 'var(--muted)' }}>
+                {sig.complete ? '✓' : '○'}
+              </span>
+              <button
+                onClick={() => !sig.complete && onSectionChange(sig.sectionId)}
+                style={{
+                  fontSize: 12.5,
+                  color: sig.complete ? 'var(--ink-2)' : 'var(--muted)',
+                  fontWeight: sig.complete ? 500 : 400,
+                  background: 'none', border: 'none', padding: 0,
+                  cursor: sig.complete ? 'default' : 'pointer',
+                  fontFamily: 'var(--font-sans)', textAlign: 'left',
+                  textDecoration: sig.complete ? 'none' : 'underline',
+                  textDecorationStyle: 'dotted',
+                }}
+              >
+                {sig.label}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Company Snapshot ──────────────────────────────────── */}
       <div style={CARD}>
         <p style={SECTION_LABEL}>Company</p>
         <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
           {client.business_name}
         </p>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
           {client.industry && <span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{client.industry}</span>}
-          {client.industry && client.location && <span style={{ color: 'var(--hairline)' }}>·</span>}
+          {client.industry && client.sub_industry && <span style={{ color: 'var(--hairline)' }}>·</span>}
+          {client.sub_industry && <span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{client.sub_industry}</span>}
+          {(client.industry || client.sub_industry) && client.location && <span style={{ color: 'var(--hairline)' }}>·</span>}
           {client.location && <span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{client.location}</span>}
           <Badge variant={HEALTH_BADGE[client.health]}>{HEALTH_LABEL[client.health]}</Badge>
         </div>
+        {client.company_description && (
+          <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 12 }}>
+            {truncate(client.company_description, 160)}
+          </p>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           {client.website && (
             <Row label="Website">
@@ -164,7 +312,15 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
               </a>
             </Row>
           )}
-          {client.business_phone && <Row label="Phone"><span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{client.business_phone}</span></Row>}
+          {client.business_email && (
+            <Row label="Email"><span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{client.business_email}</span></Row>
+          )}
+          {client.business_phone && (
+            <Row label="Phone"><span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{client.business_phone}</span></Row>
+          )}
+          {client.timezone && (
+            <Row label="Timezone"><span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{client.timezone}</span></Row>
+          )}
           {client.project_value_cents > 0 && (
             <Row label="Value"><span style={{ fontSize: 12.5, color: 'var(--ink-2)', fontWeight: 600 }}>{money(client.project_value_cents)}</span></Row>
           )}
@@ -197,6 +353,9 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
                 </div>
                 {contact.title && <p style={{ fontSize: 12, color: 'var(--ink-2)' }}>{contact.title}</p>}
                 {contact.email && <p style={{ fontSize: 12, color: 'var(--muted)' }}>{contact.email}</p>}
+                {contact.preferred_communication && (
+                  <p style={{ fontSize: 11.5, color: 'var(--muted)' }}>Prefers: {contact.preferred_communication}</p>
+                )}
               </div>
             ))}
           </div>
@@ -207,10 +366,12 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
           </button>
         ) : contacts.length > 0 ? (
           <button style={LINK_BTN} onClick={() => onSectionChange('contacts')}>Manage contacts →</button>
-        ) : null}
+        ) : (
+          <button style={LINK_BTN} onClick={() => onSectionChange('contacts')}>Add contacts →</button>
+        )}
       </div>
 
-      {/* ── Brand Snapshot ────────────────────────────────────── */}
+      {/* ── Brand Preview ─────────────────────────────────────── */}
       <div style={CARD}>
         <p style={SECTION_LABEL}>Brand</p>
         {!hasBrand ? (
@@ -240,7 +401,7 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
         <button style={LINK_BTN} onClick={() => onSectionChange('brand')}>View brand center →</button>
       </div>
 
-      {/* ── Goals & KPIs ──────────────────────────────────────── */}
+      {/* ── Active Goals ──────────────────────────────────────── */}
       <div style={CARD}>
         <p style={SECTION_LABEL}>Goals & KPIs</p>
         {goalsLoading ? (
@@ -277,63 +438,75 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
         <button style={LINK_BTN} onClick={() => onSectionChange('goals')}>Manage goals →</button>
       </div>
 
-      {/* ── Deals Snapshot ────────────────────────────────────── */}
-      <div style={CARD}>
-        <p style={SECTION_LABEL}>Deals</p>
-        {dealsLoading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* ── Account Summary ───────────────────────────────────── */}
+      <div style={{ ...CARD, gridColumn: '1 / -1' }}>
+        <p style={SECTION_LABEL}>Account</p>
+        {accountLoading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
             {[0, 1, 2].map(i => (
-              <div key={i} style={{ height: 24, borderRadius: 8, background: 'var(--lavender-soft)', opacity: 0.5 }} />
+              <div key={i} style={{ height: 52, borderRadius: 8, background: 'var(--lavender-soft)', opacity: 0.5 }} />
             ))}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <DealRow label="Latest Proposal">
-              {latestProposal ? (
-                <TwoCol
-                  left={latestProposal.title}
-                  right={
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <Badge variant={PROPOSAL_STATUS_BADGE[latestProposal.status] ?? 'default'}>
-                        {PROPOSAL_STATUS_LABEL[latestProposal.status] ?? latestProposal.status}
-                      </Badge>
-                      <span style={{ fontSize: 12, color: 'var(--ink-2)', fontWeight: 600 }}>
-                        {money(latestProposal.total_cents)}
-                      </span>
-                    </div>
-                  }
-                />
-              ) : <Empty>No proposals yet.</Empty>}
-            </DealRow>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+            <DealCard label="Latest Proposal">
+              {proposalsError
+                ? <ErrorLine>Could not load proposals.</ErrorLine>
+                : latestProposal
+                  ? (
+                    <TwoCol
+                      left={latestProposal.title}
+                      right={
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <Badge variant={PROPOSAL_STATUS_BADGE[latestProposal.status] ?? 'default'}>
+                            {PROPOSAL_STATUS_LABEL[latestProposal.status] ?? latestProposal.status}
+                          </Badge>
+                          <span style={{ fontSize: 12, color: 'var(--ink-2)', fontWeight: 600 }}>
+                            {money(latestProposal.total_cents)}
+                          </span>
+                        </div>
+                      }
+                    />
+                  )
+                  : <EmptyLine>No proposals yet.</EmptyLine>}
+            </DealCard>
 
-            <DealRow label="Latest Contract">
-              {latestContract ? (
-                <TwoCol
-                  left={latestContract.title}
-                  right={
-                    <Badge variant={CONTRACT_STATUS_BADGE[latestContract.status] ?? 'default'}>
-                      {latestContract.status}
-                    </Badge>
-                  }
-                />
-              ) : <Empty>No contracts yet.</Empty>}
-            </DealRow>
+            <DealCard label="Latest Contract">
+              {contractsError
+                ? <ErrorLine>Could not load contracts.</ErrorLine>
+                : latestContract
+                  ? (
+                    <TwoCol
+                      left={latestContract.title}
+                      right={
+                        <Badge variant={CONTRACT_STATUS_BADGE[latestContract.status] ?? 'default'}>
+                          {latestContract.status}
+                        </Badge>
+                      }
+                    />
+                  )
+                  : <EmptyLine>No contracts yet.</EmptyLine>}
+            </DealCard>
 
-            <DealRow label="Active Retainer">
-              {activeRetainer ? (
-                <TwoCol
-                  left={activeRetainer.title ?? activeRetainer.number ?? 'Recurring invoice'}
-                  right={
-                    <span style={{ fontSize: 12, color: 'var(--ink-2)', fontWeight: 600 }}>
-                      {money(activeRetainer.total_cents)}/mo
-                    </span>
-                  }
-                />
-              ) : <Empty>No active retainer.</Empty>}
-            </DealRow>
+            <DealCard label="Active Retainer">
+              {invoicesError
+                ? <ErrorLine>Could not load invoices.</ErrorLine>
+                : activeRetainer
+                  ? (
+                    <TwoCol
+                      left={activeRetainer.title ?? activeRetainer.number ?? 'Recurring invoice'}
+                      right={
+                        <span style={{ fontSize: 12, color: 'var(--ink-2)', fontWeight: 600 }}>
+                          {money(activeRetainer.total_cents)}/mo
+                        </span>
+                      }
+                    />
+                  )
+                  : <EmptyLine>No active retainer on file.</EmptyLine>}
+            </DealCard>
 
-            {outstandingInvoice && (
-              <DealRow label="Outstanding">
+            {!invoicesError && outstandingInvoice && (
+              <DealCard label="Outstanding">
                 <TwoCol
                   left={outstandingInvoice.title ?? outstandingInvoice.number ?? 'Invoice'}
                   right={
@@ -345,30 +518,46 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
                     </div>
                   }
                 />
-              </DealRow>
+              </DealCard>
             )}
           </div>
         )}
-        <button style={LINK_BTN} onClick={() => onSectionChange('deals')}>View all deals →</button>
+        <button style={LINK_BTN} onClick={() => onSectionChange('proposals')}>View proposals →</button>
       </div>
 
-      {/* ── Connected Accounts ────────────────────────────────── */}
-      <div style={CARD}>
-        <p style={SECTION_LABEL}>Connected Accounts</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {CONNECTED_PLATFORMS.map(name => (
-            <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{name}</span>
-              <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>Not connected</span>
-            </div>
-          ))}
+      {/* ── Setup Checklist ───────────────────────────────────── */}
+      {showChecklist && checklistItems.length > 0 && (
+        <div style={{ ...CARD, gridColumn: '1 / -1', borderStyle: 'dashed' }}>
+          <p style={SECTION_LABEL}>Setup Checklist</p>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
+            Complete these items to get the most out of this client workspace.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {checklistItems.map(item => (
+              <div key={item.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ fontSize: 14, color: 'var(--muted)', marginTop: 1 }}>○</span>
+                <div>
+                  <button
+                    onClick={() => onSectionChange(item.sectionId)}
+                    style={{
+                      fontSize: 13, fontWeight: 500, color: 'var(--violet)',
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                      fontFamily: 'var(--font-sans)', textAlign: 'left',
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                  {item.tip && (
+                    <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>{item.tip}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <button style={LINK_BTN} onClick={() => onSectionChange('connected_accounts')}>
-          Set up connections →
-        </button>
-      </div>
+      )}
 
-      {/* ── Recent Activity (full width) ──────────────────────── */}
+      {/* ── Recent Activity ───────────────────────────────────── */}
       <div style={{ ...CARD, gridColumn: '1 / -1' }}>
         <p style={SECTION_LABEL}>Recent Activity</p>
         <ActivityFeed
@@ -393,9 +582,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
-function DealRow({ label, children }: { label: string; children: React.ReactNode }) {
+function DealCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div style={{ background: 'var(--bg)', borderRadius: 8, padding: 12 }}>
       <p style={SUB_LABEL}>{label}</p>
       {children}
     </div>
@@ -413,6 +602,10 @@ function TwoCol({ left, right }: { left: string; right: React.ReactNode }) {
   )
 }
 
-function Empty({ children }: { children: React.ReactNode }) {
+function EmptyLine({ children }: { children: React.ReactNode }) {
   return <p style={{ fontSize: 12.5, color: 'var(--muted)' }}>{children}</p>
+}
+
+function ErrorLine({ children }: { children: React.ReactNode }) {
+  return <p style={{ fontSize: 12.5, color: 'var(--danger)' }}>{children}</p>
 }

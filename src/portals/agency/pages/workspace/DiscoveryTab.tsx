@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { updateDiscoveryData } from '@/features/projects/api'
+import { updateDiscoveryData } from '@/features/clients/api'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
