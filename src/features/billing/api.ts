@@ -24,6 +24,15 @@ export async function listClientInvoices(): Promise<Invoice[]> {
   if (error) { console.error('listClientInvoices:', error.message); return [] }
   return (data ?? []) as Invoice[]
 }
+export async function listPaymentsByClient(clientId: string): Promise<Payment[]> {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('recorded_at', { ascending: false })
+  if (error) { console.error('listPaymentsByClient:', error.message); throw new Error(error.message) }
+  return (data ?? []) as Payment[]
+}
 export async function getInvoice(id: string): Promise<{ invoice: Invoice | null; items: InvoiceItem[]; payments: Payment[] }> {
   const [{ data: inv }, { data: items }, { data: pays }] = await Promise.all([
     supabase.from('invoices').select('*').eq('id', id).maybeSingle(),

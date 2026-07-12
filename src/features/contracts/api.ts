@@ -34,7 +34,7 @@ export async function listContractsByClient(clientId: string): Promise<Contract[
     .select('*')
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
-  if (error) { console.error('listContractsByClient:', error.message); return [] }
+  if (error) { console.error('listContractsByClient:', error.message); throw new Error(error.message) }
   return (data ?? []) as Contract[]
 }
 export async function createContract(opts: { title: string; body: string; proposal_id?: string | null; client_id?: string | null; lead_id?: string | null; template_id?: string | null }, ctx: Ctx): Promise<Contract> {

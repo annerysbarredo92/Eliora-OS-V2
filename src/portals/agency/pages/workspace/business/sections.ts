@@ -95,7 +95,7 @@ export const SECTIONS: SectionDef[] = [
     group: 'account',
     ariaLabel: 'Proposals',
     description: 'Create, send, and track proposals for this client\'s projects and engagements.',
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'contracts',
@@ -103,7 +103,7 @@ export const SECTIONS: SectionDef[] = [
     group: 'account',
     ariaLabel: 'Contracts',
     description: 'Manage service agreements and signed contracts for this client relationship.',
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'invoices',
@@ -111,7 +111,7 @@ export const SECTIONS: SectionDef[] = [
     group: 'account',
     ariaLabel: 'Invoices',
     description: 'Create and manage invoices, track billing, and monitor payment status.',
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'payments',
@@ -119,7 +119,7 @@ export const SECTIONS: SectionDef[] = [
     group: 'account',
     ariaLabel: 'Payment history',
     description: 'View and record all payments received from this client.',
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'retainers',
@@ -127,7 +127,7 @@ export const SECTIONS: SectionDef[] = [
     group: 'account',
     ariaLabel: 'Retainer agreements',
     description: 'Set up and manage ongoing retainer agreements with scheduled billing.',
-    implemented: false,
+    implemented: true,
   },
 ]
 

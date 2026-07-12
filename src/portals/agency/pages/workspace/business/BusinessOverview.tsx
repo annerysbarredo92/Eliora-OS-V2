@@ -6,10 +6,12 @@ import { useGoals, useKpis } from '@/features/goals/hooks'
 import { listProposalsByClient } from '@/features/proposals/api'
 import { listContractsByClient } from '@/features/contracts/api'
 import { listInvoices } from '@/features/billing/api'
+import { listRetainers } from '@/features/retainers/api'
 import { contactName, HEALTH_LABEL, HEALTH_BADGE, relativeTime } from '@/features/clients/helpers'
 import { money } from '@/features/operations/helpers'
+import { FREQUENCY_LABELS } from '@/features/retainers/api'
 import { computeBusinessHealth, computeAIReadiness } from './businessHealth'
-import type { Client, Proposal, Contract, Invoice, GoalStatus } from '@/types'
+import type { Client, Proposal, Contract, Invoice, Retainer, GoalStatus } from '@/types'
 
 interface Props {
   client: Client
@@ -88,10 +90,12 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [retainers, setRetainers] = useState<Retainer[]>([])
   const [accountLoading, setAccountLoading] = useState(true)
   const [proposalsError, setProposalsError] = useState(false)
   const [contractsError, setContractsError] = useState(false)
   const [invoicesError, setInvoicesError] = useState(false)
+  const [retainersError, setRetainersError] = useState(false)
 
   const { goals, loading: goalsLoading } = useGoals(client.id)
   const { kpis } = useKpis(client.id)
@@ -102,12 +106,14 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
     setProposalsError(false)
     setContractsError(false)
     setInvoicesError(false)
+    setRetainersError(false)
 
     Promise.allSettled([
       listProposalsByClient(client.id),
       listContractsByClient(client.id),
       listInvoices(client.id),
-    ]).then(([pResult, cResult, iResult]) => {
+      listRetainers(client.id),
+    ]).then(([pResult, cResult, iResult, rResult]) => {
       if (pResult.status === 'fulfilled') setProposals(pResult.value)
       else { console.error('listProposalsByClient:', pResult.reason); setProposalsError(true) }
 
@@ -116,6 +122,9 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
 
       if (iResult.status === 'fulfilled') setInvoices(iResult.value)
       else { console.error('listInvoices:', iResult.reason); setInvoicesError(true) }
+
+      if (rResult.status === 'fulfilled') setRetainers(rResult.value)
+      else { console.error('listRetainers:', rResult.reason); setRetainersError(true) }
     }).finally(() => setAccountLoading(false))
   }, [client.id])
 
@@ -130,11 +139,9 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
     {} as Partial<Record<GoalStatus, number>>,
   )
 
-  const latestProposal = proposals[0] ?? null
-  const latestContract = contracts[0] ?? null
-  const activeRetainer = invoices.find(
-    i => i.is_recurring && ['sent', 'viewed', 'partially_paid'].includes(i.status),
-  ) ?? null
+  const latestProposal  = proposals[0] ?? null
+  const latestContract  = contracts[0] ?? null
+  const activeRetainer  = retainers.find(r => r.status === 'active') ?? null
   const outstandingInvoice = invoices.find(
     i => ['overdue', 'sent'].includes(i.status) && i.amount_paid_cents < i.total_cents,
   ) ?? null
@@ -487,15 +494,15 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
             </DealCard>
 
             <DealCard label="Active Retainer">
-              {invoicesError
-                ? <ErrorLine>Could not load invoices.</ErrorLine>
+              {retainersError
+                ? <ErrorLine>Could not load retainers.</ErrorLine>
                 : activeRetainer
                   ? (
                     <TwoCol
-                      left={activeRetainer.title ?? activeRetainer.number ?? 'Recurring invoice'}
+                      left={activeRetainer.title}
                       right={
                         <span style={{ fontSize: 12, color: 'var(--ink-2)', fontWeight: 600 }}>
-                          {money(activeRetainer.total_cents)}/mo
+                          {money(activeRetainer.amount_cents)}/{FREQUENCY_LABELS[activeRetainer.frequency].toLowerCase()}
                         </span>
                       }
                     />

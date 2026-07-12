@@ -44,17 +44,18 @@ serve(async (req) => {
     // Fetch supporting data in parallel — Wave 3 data + operational data
     const [
       proposalsRes, contentRes, messagesRes, activityRes, invoicesRes,
-      productsRes, goalsRes, kpisRes, competitorsRes,
+      productsRes, goalsRes, kpisRes, competitorsRes, retainersRes,
     ] = await Promise.all([
       admin.from('proposals').select('title, status, total_cents, expires_at, sent_at, decided_at').eq('client_id', project_id).order('created_at', { ascending: false }).limit(10),
       admin.from('content_items').select('title, status, platform, caption, scheduled_date').eq('client_id', project_id).order('created_at', { ascending: false }).limit(20),
       admin.from('messages').select('body, kind, author_role, created_at').eq('client_id', project_id).eq('is_client_visible', true).order('created_at', { ascending: false }).limit(15),
       admin.from('activity_log').select('action, description, created_at').eq('client_id', project_id).order('created_at', { ascending: false }).limit(20),
-      admin.from('invoices').select('title, status, total_cents, due_date').eq('client_id', project_id).order('created_at', { ascending: false }).limit(5),
+      admin.from('invoices').select('title, status, total_cents, amount_paid_cents, due_date').eq('client_id', project_id).order('created_at', { ascending: false }).limit(5),
       admin.from('client_products_services').select('name, type, description, target_audience, benefits, pricing_type, price_cents, price_min_cents, price_max_cents, price_label, status, include_in_ai_context').eq('client_id', project_id).eq('status', 'active').eq('include_in_ai_context', true).order('sort_order'),
       admin.from('goals').select('title, description, status, current_value, target_value, due_date, time_period, owner').eq('client_id', project_id).eq('is_archived', false).order('created_at', { ascending: false }).limit(15),
       admin.from('kpis').select('name, description, metric_key, current_value, target_value, unit, period, status').eq('client_id', project_id).eq('is_archived', false).order('created_at', { ascending: false }).limit(20),
       admin.from('client_competitors').select('name, website, description, strengths, weaknesses').eq('client_id', project_id).order('created_at', { ascending: false }).limit(10),
+      admin.from('retainers').select('title, status, frequency, amount_cents, start_date, end_date, next_billing_date').eq('client_id', project_id).order('created_at', { ascending: false }).limit(5),
     ])
 
     const pc = project.client_contacts?.find((c: Record<string, unknown>) => c.is_primary) ?? project.client_contacts?.[0]
@@ -194,7 +195,10 @@ RECENT MESSAGES (${messagesRes.data?.length ?? 0}):
 ${(messagesRes.data ?? []).map((m: Record<string, unknown>) => `- [${m.author_role}] ${String(m.body).slice(0, 120)} (${m.created_at})`).join('\n') || 'None'}
 
 INVOICES:
-${(invoicesRes.data ?? []).map((i: Record<string, unknown>) => `- ${i.title ?? 'Invoice'} | $${((i.total_cents as number ?? 0) / 100).toLocaleString()} | ${i.status} | Due: ${i.due_date ?? '—'}`).join('\n') || 'None'}
+${(invoicesRes.data ?? []).map((i: Record<string, unknown>) => `- ${i.title ?? 'Invoice'} | $${((i.total_cents as number ?? 0) / 100).toLocaleString()} | Paid: $${((i.amount_paid_cents as number ?? 0) / 100).toLocaleString()} | ${i.status} | Due: ${i.due_date ?? '—'}`).join('\n') || 'None'}
+
+RETAINERS (${retainersRes.data?.length ?? 0}):
+${(retainersRes.data ?? []).map((r: Record<string, unknown>) => `- ${r.title} | $${((r.amount_cents as number ?? 0) / 100).toLocaleString()}/${r.frequency} | ${r.status} | Start: ${r.start_date ?? '—'} | Next billing: ${r.next_billing_date ?? '—'}`).join('\n') || 'None'}
 
 RECENT ACTIVITY:
 ${(activityRes.data ?? []).map((a: Record<string, unknown>) => `- ${a.action}: ${a.description} (${a.created_at})`).join('\n') || 'None'}

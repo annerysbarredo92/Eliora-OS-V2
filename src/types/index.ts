@@ -804,6 +804,30 @@ export interface EmailEvent {
   created_at: string
 }
 
+/* ── Wave 4 Business Workspace: Retainers ───────────────── */
+export type RetainerStatus    = 'active' | 'paused' | 'completed' | 'cancelled'
+export type RetainerFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annually' | 'custom'
+
+export interface Retainer {
+  id: string
+  agency_id: string
+  client_id: string
+  title: string
+  description: string | null
+  status: RetainerStatus
+  frequency: RetainerFrequency
+  amount_cents: number
+  start_date: string | null
+  end_date: string | null
+  next_billing_date: string | null
+  is_auto_renew: boolean
+  notes: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 /* ── Wave 4: AI & Automation ────────────────────────────── */
 export interface AiResult { captions: string[]; hooks: string[]; hashtags: string[]; ideas: string[]; creative_direction: string; visual_suggestions: string[] }
 export interface AiGeneration { id: string; agency_id: string; client_id: string | null; actor_id: string | null; kind: string; model: string | null; brief: Record<string, unknown>; result: Record<string, unknown>; created_at: string }

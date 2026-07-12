@@ -8,6 +8,11 @@ import { DiscoverySection }           from './DiscoverySection'
 import { ProductsSection }            from './ProductsSection'
 import { GoalsSection }               from './GoalsSection'
 import { MarketSection }              from './MarketSection'
+import { ProposalsSection }           from './ProposalsSection'
+import { ContractsSection }           from './ContractsSection'
+import { InvoicesSection }            from './InvoicesSection'
+import { PaymentsSection }            from './PaymentsSection'
+import { RetainersSection }           from './RetainersSection'
 import { BusinessSidebar, ICONS }     from './BusinessSidebar'
 import { BusinessHeader }             from './BusinessHeader'
 import { BusinessSectionPlaceholder } from './BusinessSectionPlaceholder'
@@ -203,6 +208,46 @@ function SectionRenderer({ section, client, ctx, onChanged, onSectionChange }: R
     case 'market-intelligence':
       return (
         <MarketSection
+          client={client}
+          ctx={ctx}
+          onChanged={onChanged}
+        />
+      )
+    case 'proposals':
+      return (
+        <ProposalsSection
+          client={client}
+          ctx={ctx}
+          onChanged={onChanged}
+        />
+      )
+    case 'contracts':
+      return (
+        <ContractsSection
+          client={client}
+          ctx={ctx}
+          onChanged={onChanged}
+        />
+      )
+    case 'invoices':
+      return (
+        <InvoicesSection
+          client={client}
+          ctx={ctx}
+          onChanged={onChanged}
+        />
+      )
+    case 'payments':
+      return (
+        <PaymentsSection
+          client={client}
+          ctx={ctx}
+          onChanged={onChanged}
+        />
+      )
+    case 'retainers':
+      return (
+        <RetainersSection
           client={client}
           ctx={ctx}
           onChanged={onChanged}

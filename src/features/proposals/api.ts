@@ -26,7 +26,7 @@ export async function listProposalsByClient(clientId: string): Promise<Proposal[
     .select('*')
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
-  if (error) { console.error('listProposalsByClient:', error.message); return [] }
+  if (error) { console.error('listProposalsByClient:', error.message); throw new Error(error.message) }
   return (data ?? []) as Proposal[]
 }
 export async function getProposal(id: string): Promise<{ proposal: Proposal | null; sections: ProposalSection[]; items: ProposalLineItem[] }> {
