@@ -633,8 +633,121 @@ export interface Payment { id: string; agency_id: string; client_id: string; inv
 /* ── Wave 3: Performance, KPIs, Calendar, Tasks ─────────── */
 export interface ContentMetrics { id: string; agency_id: string; client_id: string; content_id: string; views: number; reach: number; engagement: number; clicks: number; likes: number; comments: number; shares: number; saves: number; recorded_at: string }
 export type GoalStatus = 'on_track' | 'at_risk' | 'achieved' | 'missed'
-export interface Kpi { id: string; agency_id: string; client_id: string | null; name: string; metric_key: string | null; target_value: number; current_value: number; unit: string | null; period: string; is_client_visible: boolean; created_at: string }
-export interface Goal { id: string; agency_id: string; client_id: string | null; title: string; target_value: number; current_value: number; due_date: string | null; status: GoalStatus; is_client_visible: boolean; created_at: string }
+export interface Goal {
+  id: string; agency_id: string; client_id: string | null
+  title: string; description: string | null
+  target_value: number; current_value: number
+  due_date: string | null; time_period: string | null
+  status: GoalStatus; owner: string | null
+  is_client_visible: boolean; is_archived: boolean; archived_at: string | null
+  created_by: string | null; updated_by: string | null
+  created_at: string; updated_at: string
+}
+export interface Kpi {
+  id: string; agency_id: string; client_id: string | null
+  name: string; description: string | null; metric_key: string | null
+  target_value: number; current_value: number; unit: string | null; period: string
+  goal_id: string | null; owner: string | null
+  status: 'active' | 'needs_attention' | 'achieved' | 'inactive'
+  is_client_visible: boolean; is_archived: boolean; archived_at: string | null
+  created_by: string | null; updated_by: string | null
+  created_at: string; updated_at: string
+}
+
+/* ── Wave 3 Strategy: Products & Services ───────────────── */
+export type ProductType    = 'product' | 'service' | 'package' | 'membership' | 'subscription' | 'course' | 'program'
+export type PricingType    = 'fixed' | 'range' | 'starting_at' | 'custom' | 'free'
+export type ProductStatus  = 'active' | 'inactive' | 'seasonal' | 'discontinued'
+
+export interface ClientProductService {
+  id: string; agency_id: string; client_id: string
+  name: string; type: ProductType; description: string | null
+  target_audience: string | null; benefits: string[]
+  pricing_type: PricingType; price_cents: number | null
+  price_min_cents: number | null; price_max_cents: number | null
+  price_label: string | null; status: ProductStatus
+  seasonal_availability: string | null; include_in_ai_context: boolean
+  sort_order: number
+  created_by: string | null; updated_by: string | null
+  created_at: string; updated_at: string
+}
+
+/* ── Wave 3 Strategy: Market Intelligence ───────────────── */
+export interface ClientCompetitor {
+  id: string; agency_id: string; client_id: string
+  name: string; website: string | null; description: string | null
+  social_profiles: Record<string, string>
+  strengths: string[]; weaknesses: string[]; notes: string | null
+  ai_summary: string | null; ai_summary_generated_at: string | null
+  created_by: string | null; updated_by: string | null
+  created_at: string; updated_at: string
+}
+
+export interface MarketSWOT {
+  strengths: string[]; weaknesses: string[]
+  opportunities: string[]; threats: string[]
+}
+
+export interface MarketPosition {
+  positioning_statement: string; differentiators: string[]
+  white_space: string[]; industry_notes: string
+}
+
+/* ── Wave 3 Strategy: Discovery Notes ───────────────────── */
+export type DiscoveryNoteSource = 'call' | 'meeting' | 'email' | 'document' | 'workshop' | 'other'
+
+export interface DiscoveryNote {
+  id: string; agency_id: string; client_id: string
+  title: string; body: string
+  source: DiscoveryNoteSource | null; author_id: string | null
+  created_at: string; updated_at: string
+}
+
+/* ── Wave 3 Strategy: Brand JSONB Domains ───────────────── */
+export interface BrandColor { hex: string; name: string; role: string }
+export interface BrandFont  { name: string; role: string }
+
+export interface BrandVisual {
+  colors: BrandColor[]
+  fonts: BrandFont[]
+  photo_style: string
+  logo_ids: { primary: string | null; secondary: string | null; icon: string | null }
+}
+
+export interface BrandVoiceDomain {
+  voice_descriptor: string
+  tone_guidelines: string
+  approved_language: string[]
+  prohibited_language: string[]
+  writing_example: string
+}
+
+export interface BrandStrategyDomain {
+  mission: string; vision: string; values: string[]
+  positioning: string; uvp: string; taglines: string[]
+  approved_messaging: string[]; hashtags: string[]; keywords: string[]
+}
+
+/* ── Wave 3 Strategy: Discovery JSONB Domains ───────────── */
+export interface DiscoveryBusiness {
+  challenges: string; priorities: string; business_model: string
+  revenue_model: string; seasonality: string
+  operational_constraints: string; service_area: string; customer_journey: string
+}
+
+export interface DiscoveryAudience {
+  primary_audience: string; segments: string; demographics: string
+  psychographics: string; pain_points: string; motivations: string
+  objections: string; buying_triggers: string
+}
+
+export interface DiscoveryMarketing {
+  current_channels: string; past_performance: string; current_campaigns: string
+  challenges: string; content_maturity: string; paid_media_history: string
+  seo_maturity: string; conversion_process: string
+}
+
+export interface DiscoveryAISummary { summary: string; generated_at: string }
 export type CalendarEventType = 'content' | 'discovery_call' | 'client_meeting' | 'internal_meeting' | 'deadline' | 'invoice_due' | 'proposal_expiration' | 'task'
 export interface CalendarEvent { id: string; agency_id: string; client_id: string | null; title: string; type: CalendarEventType; start_at: string | null; end_at: string | null; all_day: boolean; is_client_visible: boolean; content_id: string | null; assigned_to: string[]; notes: string | null; created_at: string }
 export type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'

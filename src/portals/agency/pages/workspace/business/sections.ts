@@ -55,7 +55,7 @@ export const SECTIONS: SectionDef[] = [
     group: 'identity',
     ariaLabel: 'Brand center',
     description: 'Manage this client\'s visual identity, brand voice, messaging guidelines, and approved assets.',
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'discovery',
@@ -63,7 +63,7 @@ export const SECTIONS: SectionDef[] = [
     group: 'strategy',
     ariaLabel: 'Discovery data',
     description: 'Capture discovery data, meeting notes, strategic insights, and AI-powered analysis for this client.',
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'products',
@@ -71,7 +71,7 @@ export const SECTIONS: SectionDef[] = [
     group: 'strategy',
     ariaLabel: 'Products and services',
     description: 'Document what this client sells, including pricing, benefits, target audiences, and FAQs.',
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'goals',
@@ -79,7 +79,7 @@ export const SECTIONS: SectionDef[] = [
     group: 'strategy',
     ariaLabel: 'Goals and KPIs',
     description: 'Set and track strategic goals and KPIs to measure client progress and business outcomes.',
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'market-intelligence',
@@ -87,7 +87,7 @@ export const SECTIONS: SectionDef[] = [
     group: 'strategy',
     ariaLabel: 'Market intelligence',
     description: 'Map competitive landscape, capture SWOT analysis, and track market positioning.',
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'proposals',

@@ -29,6 +29,51 @@ function dimStatus(score: number): DimensionStatus {
   return 'empty'
 }
 
+/* ── JSONB domain helpers ────────────────────────────────── */
+
+function hasVoice(dd: Record<string, unknown>): boolean {
+  const v = dd.brand_voice
+  if (!v) return false
+  if (typeof v === 'string') return v.trim().length > 0
+  if (typeof v === 'object' && !Array.isArray(v)) {
+    const r = v as Record<string, unknown>
+    return typeof r.voice_descriptor === 'string' && r.voice_descriptor.trim().length > 0
+  }
+  return false
+}
+
+function hasDiscoveryBusiness(dd: Record<string, unknown>): boolean {
+  const r = dd.discovery_business as Record<string, unknown> | undefined
+  if (!r) return false
+  return Object.values(r).some(v => typeof v === 'string' && v.trim().length > 0)
+}
+
+function hasDiscoveryAudience(dd: Record<string, unknown>): boolean {
+  const r = dd.discovery_audience as Record<string, unknown> | undefined
+  if (!r) return false
+  return Object.values(r).some(v => typeof v === 'string' && v.trim().length > 0)
+}
+
+function hasDiscoveryMarketing(dd: Record<string, unknown>): boolean {
+  const r = dd.discovery_marketing as Record<string, unknown> | undefined
+  if (!r) return false
+  return Object.values(r).some(v => typeof v === 'string' && v.trim().length > 0)
+}
+
+function hasBrandVisual(dd: Record<string, unknown>): boolean {
+  const r = dd.brand_visual as Record<string, unknown> | undefined
+  if (!r) return false
+  return (Array.isArray(r.colors) && r.colors.length > 0) ||
+         (Array.isArray(r.fonts)  && r.fonts.length  > 0)
+}
+
+function hasBrandStrategy(dd: Record<string, unknown>): boolean {
+  const r = dd.brand_strategy as Record<string, unknown> | undefined
+  if (!r) return false
+  return (typeof r.mission === 'string' && r.mission.trim().length > 0) ||
+         (typeof r.uvp === 'string' && r.uvp.trim().length > 0)
+}
+
 export function computeBusinessHealth(client: Client): BusinessHealthResult {
   const d = client.discovery_data ?? {}
 
@@ -89,18 +134,19 @@ export function computeBusinessHealth(client: Client): BusinessHealthResult {
     !hasMultiple && 'add additional contacts',
   ].filter(Boolean) as string[]
 
-  /* 5. Discovery (business hours + internal notes) */
+  /* 5. Discovery Data (now uses Wave 3 structured domains) */
   const discoveryFields = [
     !!(d.business_hours),
-    !!client.internal_notes,
-    !!(d.target_audience),
-    !!(d.brand_voice),
+    hasDiscoveryBusiness(d),
+    hasDiscoveryAudience(d),
+    hasDiscoveryMarketing(d),
   ]
   const discoveryScore = pct(discoveryFields.filter(Boolean).length, discoveryFields.length)
   const discoveryTips = [
     !d.business_hours && 'business hours',
-    !d.target_audience && 'target audience',
-    !d.brand_voice && 'brand voice',
+    !hasDiscoveryBusiness(d) && 'business understanding',
+    !hasDiscoveryAudience(d) && 'audience understanding',
+    !hasDiscoveryMarketing(d) && 'marketing foundation',
   ].filter(Boolean) as string[]
 
   const dimensions: HealthDimension[] = [
@@ -176,13 +222,12 @@ export interface AIReadinessResult {
   signals: AISignal[]
 }
 
-// Signals are limited to data fillable through Wave 2 (Company + Contacts sections).
-// Signals pointing to Brand, Discovery, or Goals sections are deferred to those waves.
 export function computeAIReadiness(client: Client): AIReadinessResult {
   const d = client.discovery_data ?? {}
   const contacts = client.client_contacts ?? []
 
   const signals: AISignal[] = [
+    /* Wave 2 signals — Company & Contacts */
     {
       id: 'description',
       label: 'Company description',
@@ -219,6 +264,44 @@ export function computeAIReadiness(client: Client): AIReadinessResult {
       complete: contacts.some(c => c.is_primary),
       sectionId: 'contacts',
     },
+    /* Wave 3 signals — Strategy sections */
+    {
+      id: 'brand_voice',
+      label: 'Brand voice',
+      complete: hasVoice(d),
+      sectionId: 'brand',
+    },
+    {
+      id: 'target_audience',
+      label: 'Target audience',
+      complete: hasDiscoveryAudience(d),
+      sectionId: 'discovery',
+    },
+    {
+      id: 'products_services',
+      label: 'Products & services',
+      complete: false, // resolved async from useProducts; placeholder — caller may override
+      sectionId: 'products',
+    },
+    {
+      id: 'goals',
+      label: 'Active goals',
+      complete: false, // resolved async from useGoals; placeholder — caller may override
+      sectionId: 'goals',
+    },
+    {
+      id: 'market_context',
+      label: 'Market context (SWOT or competitors)',
+      complete: (() => {
+        const swot = d.market_swot as Record<string, unknown> | undefined
+        const hasSwot = swot && (
+          (Array.isArray(swot.strengths) && swot.strengths.length > 0) ||
+          (Array.isArray(swot.opportunities) && swot.opportunities.length > 0)
+        )
+        return !!hasSwot
+      })(),
+      sectionId: 'market-intelligence',
+    },
   ]
 
   const complete = signals.filter(s => s.complete).length
@@ -226,4 +309,21 @@ export function computeAIReadiness(client: Client): AIReadinessResult {
   const score = Math.round((complete / total) * 100)
 
   return { score, complete, total, signals }
+}
+
+/* ── AI Readiness with async product/goal counts ─────────── */
+// For use in BusinessOverview where we have pre-loaded counts.
+export function patchAIReadinessWithCounts(
+  result: AIReadinessResult,
+  productCount: number,
+  goalCount: number,
+): AIReadinessResult {
+  const signals = result.signals.map(s => {
+    if (s.id === 'products_services') return { ...s, complete: productCount > 0 }
+    if (s.id === 'goals')             return { ...s, complete: goalCount > 0 }
+    return s
+  })
+  const complete = signals.filter(s => s.complete).length
+  const score    = Math.round((complete / signals.length) * 100)
+  return { ...result, signals, complete, score }
 }

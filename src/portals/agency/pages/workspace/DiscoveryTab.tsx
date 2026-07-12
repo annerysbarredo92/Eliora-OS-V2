@@ -18,9 +18,6 @@ type DD = {
   // Audience
   target_audience: string; audience_pain_points: string; audience_goals: string
   current_clients: string; geographic_focus: string
-  // Brand
-  brand_mission: string; brand_voice: string; brand_colors: string
-  brand_fonts: string; brand_references: string; current_tagline: string
   // Marketing
   social_platforms: string; current_content_strategy: string; paid_advertising: string
   email_marketing: string; website_notes: string; crm_tools: string; analytics_tools: string
@@ -31,7 +28,6 @@ type DD = {
 const EMPTY: DD = {
   industry: '', services_offered: '', products: '', pricing_model: '', business_size: '', years_in_business: '',
   target_audience: '', audience_pain_points: '', audience_goals: '', current_clients: '', geographic_focus: '',
-  brand_mission: '', brand_voice: '', brand_colors: '', brand_fonts: '', brand_references: '', current_tagline: '',
   social_platforms: '', current_content_strategy: '', paid_advertising: '', email_marketing: '',
   website_notes: '', crm_tools: '', analytics_tools: '',
   meeting_notes: '', call_notes: '', documents_received: '',
@@ -83,15 +79,6 @@ export function DiscoveryTab({ client, ctx, onChanged }: Props) {
         <Textarea label="Audience pain points" rows={3} value={form.audience_pain_points} onChange={e => set('audience_pain_points', e.target.value)} placeholder="What problems does their audience face?" />
         <Textarea label="Audience goals" rows={2} value={form.audience_goals} onChange={e => set('audience_goals', e.target.value)} />
         <Textarea label="Current clients / customer examples" rows={2} value={form.current_clients} onChange={e => set('current_clients', e.target.value)} />
-      </Accordion>
-
-      <Accordion title="Brand Identity" id="brand" open={open} onToggle={setOpen}>
-        <Textarea label="Brand mission / core message" rows={2} value={form.brand_mission} onChange={e => set('brand_mission', e.target.value)} />
-        <Input label="Current tagline" value={form.current_tagline} onChange={e => set('current_tagline', e.target.value)} />
-        <Textarea label="Brand voice & tone" rows={2} value={form.brand_voice} onChange={e => set('brand_voice', e.target.value)} placeholder="e.g. Professional but warm, authoritative, playful" />
-        <Textarea label="Brand colors (hex or names)" rows={2} value={form.brand_colors} onChange={e => set('brand_colors', e.target.value)} />
-        <Input label="Brand fonts" value={form.brand_fonts} onChange={e => set('brand_fonts', e.target.value)} placeholder="e.g. Montserrat, Playfair Display" />
-        <Textarea label="Visual references / inspo" rows={2} value={form.brand_references} onChange={e => set('brand_references', e.target.value)} placeholder="URLs or describe style references…" />
       </Accordion>
 
       <Accordion title="Marketing & Digital Presence" id="marketing" open={open} onToggle={setOpen}>

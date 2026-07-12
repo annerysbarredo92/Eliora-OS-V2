@@ -3,6 +3,11 @@ import { useSearchParams } from 'react-router-dom'
 import { BusinessOverview }           from './BusinessOverview'
 import { CompanySection }             from './CompanySection'
 import { ContactsSection }            from './ContactsSection'
+import { BrandSection }               from './BrandSection'
+import { DiscoverySection }           from './DiscoverySection'
+import { ProductsSection }            from './ProductsSection'
+import { GoalsSection }               from './GoalsSection'
+import { MarketSection }              from './MarketSection'
 import { BusinessSidebar, ICONS }     from './BusinessSidebar'
 import { BusinessHeader }             from './BusinessHeader'
 import { BusinessSectionPlaceholder } from './BusinessSectionPlaceholder'
@@ -158,6 +163,46 @@ function SectionRenderer({ section, client, ctx, onChanged, onSectionChange }: R
     case 'contacts':
       return (
         <ContactsSection
+          client={client}
+          ctx={ctx}
+          onChanged={onChanged}
+        />
+      )
+    case 'brand':
+      return (
+        <BrandSection
+          client={client}
+          ctx={ctx}
+          onChanged={onChanged}
+        />
+      )
+    case 'discovery':
+      return (
+        <DiscoverySection
+          client={client}
+          ctx={ctx}
+          onChanged={onChanged}
+        />
+      )
+    case 'products':
+      return (
+        <ProductsSection
+          client={client}
+          ctx={ctx}
+          onChanged={onChanged}
+        />
+      )
+    case 'goals':
+      return (
+        <GoalsSection
+          client={client}
+          ctx={ctx}
+          onChanged={onChanged}
+        />
+      )
+    case 'market-intelligence':
+      return (
+        <MarketSection
           client={client}
           ctx={ctx}
           onChanged={onChanged}
