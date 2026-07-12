@@ -92,7 +92,7 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
   async function saveBusiness() {
     setSaving(true); setError(null)
     try {
-      await updateDiscoveryData(client.id, { discovery_business: bizForm }, ctx)
+      await updateDiscoveryData(client.id, { discovery_business: bizForm, discovery_sources_updated_at: new Date().toISOString() }, ctx)
       onChanged(); setEditing(null)
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to save') }
     finally { setSaving(false) }
@@ -104,7 +104,7 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
   async function saveAudience() {
     setSaving(true); setError(null)
     try {
-      await updateDiscoveryData(client.id, { discovery_audience: audForm }, ctx)
+      await updateDiscoveryData(client.id, { discovery_audience: audForm, discovery_sources_updated_at: new Date().toISOString() }, ctx)
       onChanged(); setEditing(null)
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to save') }
     finally { setSaving(false) }
@@ -116,7 +116,7 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
   async function saveMarketing() {
     setSaving(true); setError(null)
     try {
-      await updateDiscoveryData(client.id, { discovery_marketing: mktForm }, ctx)
+      await updateDiscoveryData(client.id, { discovery_marketing: mktForm, discovery_sources_updated_at: new Date().toISOString() }, ctx)
       onChanged(); setEditing(null)
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to save') }
     finally { setSaving(false) }
@@ -263,10 +263,11 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
 
   /* ── Stale indicator ─────────────────────────────────── */
   const isAISummaryStale = (() => {
-    if (!existingSummary?.generated_at || !client.updated_at) return false
+    if (!existingSummary?.generated_at) return false
     const generatedAt = new Date(existingSummary.generated_at).getTime()
-    const updatedAt = new Date(client.updated_at).getTime()
-    return updatedAt - generatedAt > 5000
+    const srcUpdatedAt = dd.discovery_sources_updated_at as string | undefined
+    if (!srcUpdatedAt) return false
+    return new Date(srcUpdatedAt).getTime() - generatedAt > 5000
   })()
 
   return (

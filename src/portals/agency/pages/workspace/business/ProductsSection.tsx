@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { ChipList } from '@/components/ui/ChipList'
 import { DrawerPanel, DrawerFooter } from '@/components/ui/DrawerPanel'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { createProduct, updateProduct, deleteProduct, setProductImage, type ProductFormValues } from '@/features/products/api'
+import { createProduct, updateProduct, deleteProduct, setProductImage, setProductStatus, type ProductFormValues } from '@/features/products/api'
 import { useProducts } from '@/features/products/hooks'
 import { supabase } from '@/lib/supabase'
 import { storagePath, uploadToStorage, removeFromStorage, signedUrl, formatBytes } from '@/lib/storage'
@@ -73,7 +73,29 @@ export function ProductsSection({ client, ctx, onChanged }: Props) {
   const [deleting, setDeleting]           = useState(false)
 
   const [typeFilter, setTypeFilter] = useState<ProductType | 'all'>('all')
-  const [statusFilter, setStatusFilter] = useState<ProductStatus | 'all'>('all')
+  const [showInactive, setShowInactive] = useState(false)
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null)
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null)
+
+  async function handleReactivate(p: ClientProductService) {
+    setReactivatingId(p.id)
+    try {
+      await setProductStatus(p.id, client.id, 'active', ctx)
+      refresh(); onChanged()
+    } catch (e) {
+      console.error('reactivate:', e)
+    } finally { setReactivatingId(null) }
+  }
+
+  async function handleDeactivate(p: ClientProductService) {
+    setDeactivatingId(p.id)
+    try {
+      await setProductStatus(p.id, client.id, 'inactive', ctx)
+      refresh(); onChanged()
+    } catch (e) {
+      console.error('deactivate:', e)
+    } finally { setDeactivatingId(null) }
+  }
 
   function openAdd() {
     setEditing(null); setForm({ ...EMPTY_FORM }); setDrawerError(null); setDrawerOpen(true)
@@ -188,9 +210,14 @@ export function ProductsSection({ client, ctx, onChanged }: Props) {
     } finally { setSaving(false) }
   }
 
+  const INACTIVE_STATUSES: ProductStatus[] = ['inactive', 'discontinued']
   const filtered = products.filter(p =>
-    (typeFilter === 'all' || p.type === typeFilter) &&
-    (statusFilter === 'all' || p.status === statusFilter),
+    !INACTIVE_STATUSES.includes(p.status) &&
+    (typeFilter === 'all' || p.type === typeFilter),
+  )
+  const inactiveProducts = products.filter(p =>
+    INACTIVE_STATUSES.includes(p.status) &&
+    (typeFilter === 'all' || p.type === typeFilter),
   )
 
   return (
@@ -205,14 +232,6 @@ export function ProductsSection({ client, ctx, onChanged }: Props) {
           ))}
         </div>
         <Button variant="primary" size="sm" onClick={openAddWithImage}>+ Add</Button>
-      </div>
-
-      {/* Status filter */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <FilterChip active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>All Statuses</FilterChip>
-        {STATUS_OPTIONS.map(s => (
-          <FilterChip key={s.value} active={statusFilter === s.value} onClick={() => setStatusFilter(s.value as ProductStatus | 'all')}>{s.label}</FilterChip>
-        ))}
       </div>
 
       {/* List */}
@@ -236,6 +255,8 @@ export function ProductsSection({ client, ctx, onChanged }: Props) {
               onEdit={() => openEditWithImage(p)}
               onDelete={() => { setDeleteError(null); setDeletingItem(p) }}
               agencyId={ctx.agencyId}
+              onDeactivate={p.status === 'active' ? () => handleDeactivate(p) : undefined}
+              deactivating={deactivatingId === p.id}
             />
           ))}
         </div>
@@ -348,6 +369,34 @@ export function ProductsSection({ client, ctx, onChanged }: Props) {
         onConfirm={confirmDelete}
         onCancel={() => { setDeletingItem(null); setDeleteError(null) }}
       />
+
+      {/* Inactive / Discontinued Offerings */}
+      {inactiveProducts.length > 0 && (
+        <div>
+          <button
+            onClick={() => setShowInactive(v => !v)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--ink-2)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', fontFamily: 'var(--font-sans)' }}
+          >
+            <span style={{ transform: showInactive ? 'rotate(90deg)' : 'none', transition: 'transform 180ms ease', display: 'inline-block' }}>›</span>
+            Inactive / Discontinued Offerings ({inactiveProducts.length})
+          </button>
+          {showInactive && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+              {inactiveProducts.map(p => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  onEdit={() => openEditWithImage(p)}
+                  onDelete={() => { setDeleteError(null); setDeletingItem(p) }}
+                  agencyId={ctx.agencyId}
+                  onReactivate={() => handleReactivate(p)}
+                  reactivating={reactivatingId === p.id}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -386,8 +435,10 @@ function SelectField({ label, value, onChange, children }: { label: string; valu
   )
 }
 
-function ProductCard({ product, onEdit, onDelete }: {
+function ProductCard({ product, onEdit, onDelete, onReactivate, reactivating, onDeactivate, deactivating }: {
   product: ClientProductService; onEdit: () => void; onDelete: () => void; agencyId?: string
+  onReactivate?: () => void; reactivating?: boolean
+  onDeactivate?: () => void; deactivating?: boolean
 }) {
   const st = STATUS_OPTIONS.find(s => s.value === product.status)
   const tp = PRODUCT_TYPES.find(t => t.value === product.type)
@@ -442,6 +493,12 @@ function ProductCard({ product, onEdit, onDelete }: {
         )}
       </div>
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        {onReactivate && (
+          <Button variant="ghost" size="sm" onClick={onReactivate} loading={reactivating}>Reactivate</Button>
+        )}
+        {onDeactivate && (
+          <Button variant="ghost" size="sm" onClick={onDeactivate} loading={deactivating} style={{ color: 'var(--muted)' }}>Deactivate</Button>
+        )}
         <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>
         <button
           onClick={onDelete}

@@ -105,6 +105,19 @@ export async function setProductImage(id: string, clientId: string, assetId: str
   })
 }
 
+export async function setProductStatus(id: string, clientId: string, status: ProductStatus, ctx: Ctx): Promise<void> {
+  const { error } = await supabase
+    .from('client_products_services')
+    .update({ status, updated_by: ctx.actorId })
+    .eq('id', id)
+  if (error) { console.error('setProductStatus:', error.message); throw new Error(error.message) }
+  await logActivity({
+    agencyId: ctx.agencyId, actorId: ctx.actorId, clientId,
+    action: 'product.updated', entityType: 'client_product', entityId: id,
+    description: `Set product status to ${status}`,
+  })
+}
+
 export async function deleteProduct(id: string, clientId: string, ctx: Ctx): Promise<void> {
   const { error } = await supabase.from('client_products_services').delete().eq('id', id)
   if (error) { console.error('deleteProduct:', error.message); throw new Error(error.message) }
