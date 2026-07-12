@@ -5,11 +5,14 @@ import { Button } from '@/components/ui/Button'
 import { DrawerPanel, DrawerFooter } from '@/components/ui/DrawerPanel'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
-  createGoal, updateGoal, archiveGoal, deleteGoal, updateGoalProgress,
-  createKpi, updateKpi, archiveKpi, deleteKpi, updateKpiCurrentValue,
+  createGoal, updateGoal, archiveGoal, restoreGoal, deleteGoal, updateGoalProgress,
+  listArchivedGoals,
+  createKpi, updateKpi, archiveKpi, restoreKpi, deleteKpi, updateKpiCurrentValue,
+  listArchivedKpis,
   type GoalFormValues, type KpiFormValues,
 } from '@/features/goals/api'
 import { useGoals, useKpis } from '@/features/goals/hooks'
+import { useEffect } from 'react'
 import type { Client, Goal, Kpi, GoalStatus } from '@/types'
 
 interface Props {
@@ -89,26 +92,60 @@ export function GoalsSection({ client, ctx, onChanged }: Props) {
     finally { setGoalSaving(false) }
   }
 
+  const [goalDeleteError, setGoalDeleteError]     = useState<string | null>(null)
+  const [goalArchiveError, setGoalArchiveError]   = useState<string | null>(null)
+  const [progressError, setProgressError]         = useState<string | null>(null)
+
   async function confirmDeleteGoal() {
     if (!deletingGoal) return
-    setGoalDeleting(true)
+    setGoalDeleting(true); setGoalDeleteError(null)
     try { await deleteGoal(deletingGoal.id, client.id, ctx); setDeletingGoal(null); refreshGoals(); onChanged() }
-    catch { /* stays open */ } finally { setGoalDeleting(false) }
+    catch (e) { setGoalDeleteError(e instanceof Error ? e.message : 'Delete failed') }
+    finally { setGoalDeleting(false) }
   }
 
   async function confirmArchiveGoal() {
     if (!archivingGoal) return
-    setGoalArchiving(true)
-    try { await archiveGoal(archivingGoal.id, client.id, ctx); setArchivingGoal(null); refreshGoals(); onChanged() }
-    catch { /* stays open */ } finally { setGoalArchiving(false) }
+    setGoalArchiving(true); setGoalArchiveError(null)
+    try { await archiveGoal(archivingGoal.id, client.id, ctx); setArchivingGoal(null); refreshGoals(); refreshArchivedGoals(); onChanged() }
+    catch (e) { setGoalArchiveError(e instanceof Error ? e.message : 'Archive failed') }
+    finally { setGoalArchiving(false) }
   }
 
   async function saveProgress(g: Goal) {
     const val = parseFloat(progressVal)
     if (isNaN(val)) return
-    setProgressSaving(true)
+    setProgressSaving(true); setProgressError(null)
     try { await updateGoalProgress(g.id, client.id, val, ctx); setEditingProgress(null); refreshGoals() }
-    catch { /* silent — progress update is non-critical */ } finally { setProgressSaving(false) }
+    catch (e) { setProgressError(e instanceof Error ? e.message : 'Failed to update progress') }
+    finally { setProgressSaving(false) }
+  }
+
+  /* ── Archived Goals ───────────────────────────────────── */
+  const [showArchivedGoals, setShowArchivedGoals] = useState(false)
+  const [archivedGoals, setArchivedGoals]         = useState<Goal[]>([])
+  const [archivedGoalsLoading, setArchivedGoalsLoading] = useState(false)
+  const [archivedGoalsError, setArchivedGoalsError]     = useState<string | null>(null)
+  const [archivedGoalsTick, setArchivedGoalsTick]       = useState(0)
+  function refreshArchivedGoals() { setArchivedGoalsTick(t => t + 1) }
+
+  useEffect(() => {
+    if (!showArchivedGoals) return
+    let cancelled = false
+    setArchivedGoalsLoading(true); setArchivedGoalsError(null)
+    listArchivedGoals(client.id).then(g => { if (!cancelled) setArchivedGoals(g) }).catch(e => { if (!cancelled) setArchivedGoalsError((e as Error).message) }).finally(() => { if (!cancelled) setArchivedGoalsLoading(false) })
+    return () => { cancelled = true }
+  }, [client.id, showArchivedGoals, archivedGoalsTick])
+
+  async function restoreArchivedGoal(g: Goal) {
+    try { await restoreGoal(g.id, client.id, ctx); refreshArchivedGoals(); refreshGoals(); onChanged() }
+    catch (e) { setArchivedGoalsError(e instanceof Error ? e.message : 'Restore failed') }
+  }
+
+  async function deleteArchivedGoal(g: Goal) {
+    if (!confirm(`Permanently delete "${g.title}"? This cannot be undone.`)) return
+    try { await deleteGoal(g.id, client.id, ctx); refreshArchivedGoals(); onChanged() }
+    catch (e) { setArchivedGoalsError(e instanceof Error ? e.message : 'Delete failed') }
   }
 
   /* ── KPIs CRUD ───────────────────────────────────────── */
@@ -145,16 +182,52 @@ export function GoalsSection({ client, ctx, onChanged }: Props) {
     finally { setKpiSaving(false) }
   }
 
+  const [kpiDeleteError, setKpiDeleteError] = useState<string | null>(null)
+  const [kpiArchiveError, setKpiArchiveError] = useState<string | null>(null)
+
   async function confirmDeleteKpi() {
     if (!deletingKpi) return
-    setKpiDeleting(true)
+    setKpiDeleting(true); setKpiDeleteError(null)
     try { await deleteKpi(deletingKpi.id, client.id, ctx); setDeletingKpi(null); refreshKpis(); onChanged() }
-    catch { /* stays open */ } finally { setKpiDeleting(false) }
+    catch (e) { setKpiDeleteError(e instanceof Error ? e.message : 'Delete failed') }
+    finally { setKpiDeleting(false) }
+  }
+
+  async function handleArchiveKpi(k: Kpi) {
+    try { await archiveKpi(k.id, client.id, ctx); refreshKpis(); refreshArchivedKpis(); onChanged() }
+    catch (e) { setKpiArchiveError(e instanceof Error ? e.message : 'Archive failed') }
   }
 
   async function inlineKpiUpdate(k: Kpi, val: number) {
     try { await updateKpiCurrentValue(k.id, client.id, val, ctx); refreshKpis() }
-    catch { /* silent */ }
+    catch (e) { console.error('inlineKpiUpdate:', (e as Error).message) }
+  }
+
+  /* ── Archived KPIs ───────────────────────────────────── */
+  const [showArchivedKpis, setShowArchivedKpis]     = useState(false)
+  const [archivedKpis, setArchivedKpis]             = useState<Kpi[]>([])
+  const [archivedKpisLoading, setArchivedKpisLoading] = useState(false)
+  const [archivedKpisError, setArchivedKpisError]   = useState<string | null>(null)
+  const [archivedKpisTick, setArchivedKpisTick]     = useState(0)
+  function refreshArchivedKpis() { setArchivedKpisTick(t => t + 1) }
+
+  useEffect(() => {
+    if (!showArchivedKpis) return
+    let cancelled = false
+    setArchivedKpisLoading(true); setArchivedKpisError(null)
+    listArchivedKpis(client.id).then(k => { if (!cancelled) setArchivedKpis(k) }).catch(e => { if (!cancelled) setArchivedKpisError((e as Error).message) }).finally(() => { if (!cancelled) setArchivedKpisLoading(false) })
+    return () => { cancelled = true }
+  }, [client.id, showArchivedKpis, archivedKpisTick])
+
+  async function restoreArchivedKpi(k: Kpi) {
+    try { await restoreKpi(k.id, client.id, ctx); refreshArchivedKpis(); refreshKpis(); onChanged() }
+    catch (e) { setArchivedKpisError(e instanceof Error ? e.message : 'Restore failed') }
+  }
+
+  async function deleteArchivedKpi(k: Kpi) {
+    if (!confirm(`Permanently delete "${k.name}"? This cannot be undone.`)) return
+    try { await deleteKpi(k.id, client.id, ctx); refreshArchivedKpis(); onChanged() }
+    catch (e) { setArchivedKpisError(e instanceof Error ? e.message : 'Delete failed') }
   }
 
   return (
@@ -232,7 +305,8 @@ export function GoalsSection({ client, ctx, onChanged }: Props) {
                               autoFocus
                             />
                             <Button variant="primary" size="sm" onClick={() => saveProgress(g)} loading={progressSaving} style={{ fontSize: 11 }}>OK</Button>
-                            <Button variant="ghost"   size="sm" onClick={() => setEditingProgress(null)} style={{ fontSize: 11 }}>Cancel</Button>
+                            <Button variant="ghost"   size="sm" onClick={() => { setEditingProgress(null); setProgressError(null) }} style={{ fontSize: 11 }}>Cancel</Button>
+                            {progressError && <span style={{ fontSize: 11, color: 'var(--danger)' }}>{progressError}</span>}
                           </>
                         ) : (
                           <button
@@ -259,6 +333,40 @@ export function GoalsSection({ client, ctx, onChanged }: Props) {
               )
             })
           )}
+
+          {/* Archived goals toggle */}
+          <div style={{ marginTop: 8, borderTop: '1px solid var(--hairline-2)', paddingTop: 12 }}>
+            <button
+              onClick={() => setShowArchivedGoals(v => !v)}
+              style={{ fontSize: 12.5, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <span style={{ transform: showArchivedGoals ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform 200ms' }}>›</span>
+              Archived Goals
+            </button>
+            {showArchivedGoals && (
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {archivedGoalsError && <p style={{ fontSize: 12.5, color: 'var(--danger)' }}>{archivedGoalsError}</p>}
+                {archivedGoalsLoading ? (
+                  <p style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</p>
+                ) : archivedGoals.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>No archived goals.</p>
+                ) : (
+                  archivedGoals.map(g => (
+                    <div key={g.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline)', opacity: 0.8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)' }}>{g.title}</p>
+                        {g.archived_at && <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>Archived {new Date(g.archived_at).toLocaleDateString()}</p>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <Button variant="ghost" size="sm" onClick={() => restoreArchivedGoal(g)}>Restore</Button>
+                        <button onClick={() => deleteArchivedGoal(g)} aria-label="Permanently delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 12.5, fontFamily: 'var(--font-sans)' }}>Delete</button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -292,13 +400,49 @@ export function GoalsSection({ client, ctx, onChanged }: Props) {
                   progress={progress}
                   linkedGoal={linkedGoal}
                   onEdit={() => openEditKpi(k)}
-                  onDelete={() => setDeletingKpi(k)}
-                  onArchive={() => { archiveKpi(k.id, client.id, ctx).then(refreshKpis) }}
+                  onDelete={() => { setKpiDeleteError(null); setDeletingKpi(k) }}
+                  onArchive={() => handleArchiveKpi(k)}
                   onUpdateCurrent={(val) => inlineKpiUpdate(k, val)}
                 />
               )
             })
           )}
+
+          {kpiArchiveError && <p style={{ fontSize: 12.5, color: 'var(--danger)' }}>{kpiArchiveError}</p>}
+
+          {/* Archived KPIs toggle */}
+          <div style={{ marginTop: 8, borderTop: '1px solid var(--hairline-2)', paddingTop: 12 }}>
+            <button
+              onClick={() => setShowArchivedKpis(v => !v)}
+              style={{ fontSize: 12.5, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <span style={{ transform: showArchivedKpis ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform 200ms' }}>›</span>
+              Archived KPIs
+            </button>
+            {showArchivedKpis && (
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {archivedKpisError && <p style={{ fontSize: 12.5, color: 'var(--danger)' }}>{archivedKpisError}</p>}
+                {archivedKpisLoading ? (
+                  <p style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</p>
+                ) : archivedKpis.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>No archived KPIs.</p>
+                ) : (
+                  archivedKpis.map(k => (
+                    <div key={k.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline)', opacity: 0.8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)' }}>{k.name}</p>
+                        {k.archived_at && <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>Archived {new Date(k.archived_at).toLocaleDateString()}</p>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <Button variant="ghost" size="sm" onClick={() => restoreArchivedKpi(k)}>Restore</Button>
+                        <button onClick={() => deleteArchivedKpi(k)} aria-label="Permanently delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 12.5, fontFamily: 'var(--font-sans)' }}>Delete</button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -413,9 +557,9 @@ export function GoalsSection({ client, ctx, onChanged }: Props) {
       </DrawerPanel>
 
       {/* Confirm dialogs */}
-      <ConfirmDialog open={!!deletingGoal} title="Delete Goal" description={`Delete "${deletingGoal?.title}"? This cannot be undone.`} confirmLabel="Delete" loading={goalDeleting} onConfirm={confirmDeleteGoal} onCancel={() => setDeletingGoal(null)} />
-      <ConfirmDialog open={!!archivingGoal} title="Archive Goal" description={`Archive "${archivingGoal?.title}"? It will be hidden but recoverable.`} confirmLabel="Archive" variant="primary" loading={goalArchiving} onConfirm={confirmArchiveGoal} onCancel={() => setArchivingGoal(null)} />
-      <ConfirmDialog open={!!deletingKpi} title="Delete KPI" description={`Delete "${deletingKpi?.name}"? This cannot be undone.`} confirmLabel="Delete" loading={kpiDeleting} onConfirm={confirmDeleteKpi} onCancel={() => setDeletingKpi(null)} />
+      <ConfirmDialog open={!!deletingGoal} title="Delete Goal" description={goalDeleteError ?? `Delete "${deletingGoal?.title}"? This cannot be undone.`} confirmLabel="Delete" loading={goalDeleting} onConfirm={confirmDeleteGoal} onCancel={() => { setDeletingGoal(null); setGoalDeleteError(null) }} />
+      <ConfirmDialog open={!!archivingGoal} title="Archive Goal" description={goalArchiveError ?? `Archive "${archivingGoal?.title}"? It will be hidden but recoverable.`} confirmLabel="Archive" variant="primary" loading={goalArchiving} onConfirm={confirmArchiveGoal} onCancel={() => { setArchivingGoal(null); setGoalArchiveError(null) }} />
+      <ConfirmDialog open={!!deletingKpi} title="Delete KPI" description={kpiDeleteError ?? `Delete "${deletingKpi?.name}"? This cannot be undone.`} confirmLabel="Delete" loading={kpiDeleting} onConfirm={confirmDeleteKpi} onCancel={() => { setDeletingKpi(null); setKpiDeleteError(null) }} />
     </div>
   )
 }

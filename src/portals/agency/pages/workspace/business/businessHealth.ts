@@ -60,19 +60,6 @@ function hasDiscoveryMarketing(dd: Record<string, unknown>): boolean {
   return Object.values(r).some(v => typeof v === 'string' && v.trim().length > 0)
 }
 
-function hasBrandVisual(dd: Record<string, unknown>): boolean {
-  const r = dd.brand_visual as Record<string, unknown> | undefined
-  if (!r) return false
-  return (Array.isArray(r.colors) && r.colors.length > 0) ||
-         (Array.isArray(r.fonts)  && r.fonts.length  > 0)
-}
-
-function hasBrandStrategy(dd: Record<string, unknown>): boolean {
-  const r = dd.brand_strategy as Record<string, unknown> | undefined
-  if (!r) return false
-  return (typeof r.mission === 'string' && r.mission.trim().length > 0) ||
-         (typeof r.uvp === 'string' && r.uvp.trim().length > 0)
-}
 
 export function computeBusinessHealth(client: Client): BusinessHealthResult {
   const d = client.discovery_data ?? {}

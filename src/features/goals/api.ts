@@ -263,6 +263,19 @@ export async function archiveKpi(id: string, clientId: string, ctx: Ctx): Promis
   })
 }
 
+export async function restoreKpi(id: string, clientId: string, ctx: Ctx): Promise<void> {
+  const { error } = await supabase
+    .from('kpis')
+    .update({ is_archived: false, archived_at: null, updated_by: ctx.actorId })
+    .eq('id', id)
+  if (error) { console.error('restoreKpi:', error.message); throw new Error(error.message) }
+  await logActivity({
+    agencyId: ctx.agencyId, actorId: ctx.actorId, clientId,
+    action: 'kpi.restored', entityType: 'kpi', entityId: id,
+    description: 'Restored a KPI',
+  })
+}
+
 export async function deleteKpi(id: string, clientId: string, ctx: Ctx): Promise<void> {
   const { error } = await supabase.from('kpis').delete().eq('id', id)
   if (error) { console.error('deleteKpi:', error.message); throw new Error(error.message) }

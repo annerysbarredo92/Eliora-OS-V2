@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { ChipList } from '@/components/ui/ChipList'
 import { ColorSwatch } from '@/components/ui/ColorSwatch'
 import { updateDiscoveryData } from '@/features/clients/api'
-import type { Client, BrandVisual, BrandVoiceDomain, BrandStrategyDomain, BrandColor, BrandFont } from '@/types'
+import { uploadLogo, removeLogo, uploadBrandFile, deleteBrandFile, openBrandFile, getBrandSignedUrl } from '@/features/brand/api'
+import { useBrandAssets } from '@/features/brand/hooks'
+import { formatBytes } from '@/lib/storage'
+import type { Client, BrandVisual, BrandVoiceDomain, BrandStrategyDomain, BrandColor, BrandFont, ClientAsset } from '@/types'
+import type { LogoSlot, BrandCtx } from '@/features/brand/api'
 
 interface Props {
   client: Client
@@ -67,7 +71,6 @@ function readStrategy(dd: Record<string, unknown>): BrandStrategyDomain {
 /* ── Sub-components ──────────────────────────────────────── */
 
 const COLOR_ROLES = ['Primary', 'Secondary', 'Accent', 'Background', 'Text', 'Other']
-const FONT_ROLES  = ['Heading', 'Body', 'Accent', 'UI', 'Other']
 
 function ColorEditor({ colors, onChange }: { colors: BrandColor[]; onChange: (c: BrandColor[]) => void }) {
   const [hex, setHex]   = useState('#')
@@ -139,6 +142,161 @@ function ColorEditor({ colors, onChange }: { colors: BrandColor[]; onChange: (c:
   )
 }
 
+/* ── Logo slot component ─────────────────────────────────── */
+
+function LogoSlotCard({
+  slot,
+  label,
+  asset,
+  logoIds,
+  brandCtx,
+  onDone,
+}: {
+  slot: LogoSlot
+  label: string
+  asset: ClientAsset | null
+  logoIds: { primary: string | null; secondary: string | null; icon: string | null }
+  brandCtx: BrandCtx
+  onDone: () => void
+}) {
+  const inputRef  = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [removing, setRemoving]   = useState(false)
+  const [progress, setProgress]   = useState(0)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [err, setErr]  = useState<string | null>(null)
+
+  // Load signed URL when asset changes
+  useState(() => {
+    if (!asset) { setPreviewUrl(null); return }
+    getBrandSignedUrl(asset.storage_path).then(u => setPreviewUrl(u)).catch(() => setPreviewUrl(null))
+  })
+
+  async function handleFile(file: File) {
+    setUploading(true); setProgress(0); setErr(null)
+    try {
+      await uploadLogo(file, slot, logoIds, brandCtx, pct => setProgress(pct))
+      onDone()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Upload failed')
+    } finally { setUploading(false) }
+  }
+
+  async function handleRemove() {
+    if (!asset) return
+    setRemoving(true); setErr(null)
+    try {
+      await removeLogo(asset.id, asset.storage_path, slot, logoIds, brandCtx)
+      setPreviewUrl(null)
+      onDone()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Remove failed')
+    } finally { setRemoving(false) }
+  }
+
+  const isImage = asset?.mime_type?.startsWith('image/')
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Label>{label}</Label>
+      <div style={{
+        border: '1px solid var(--hairline)',
+        borderRadius: 8,
+        padding: 12,
+        display: 'flex',
+        gap: 14,
+        alignItems: 'center',
+        background: 'var(--bg)',
+      }}>
+        {/* Preview zone */}
+        <div style={{
+          width: 64, height: 64, borderRadius: 8, flexShrink: 0,
+          background: 'var(--surface-solid)', border: '1px solid var(--hairline)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+        }}>
+          {isImage && previewUrl ? (
+            <img src={previewUrl} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          ) : asset ? (
+            <span style={{ fontSize: 22 }}>📄</span>
+          ) : (
+            <span style={{ fontSize: 22, color: 'var(--muted)' }}>🖼</span>
+          )}
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {asset ? (
+            <>
+              <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{asset.name}</p>
+              <p style={{ fontSize: 11.5, color: 'var(--muted)' }}>{formatBytes(asset.size_bytes ?? 0)}</p>
+            </>
+          ) : (
+            <p style={{ fontSize: 12.5, color: 'var(--muted)', fontStyle: 'italic' }}>No {label.toLowerCase()} uploaded</p>
+          )}
+          {uploading && (
+            <div style={{ marginTop: 6, height: 4, borderRadius: 99, background: 'var(--hairline)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progress}%`, background: 'var(--violet)', borderRadius: 99, transition: 'width 200ms ease' }} />
+            </div>
+          )}
+          {err && <p style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>{err}</p>}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*,.pdf,.zip,.svg"
+            style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}
+          />
+          <Button variant="ghost" size="sm" onClick={() => inputRef.current?.click()} loading={uploading}>
+            {asset ? 'Replace' : 'Upload'}
+          </Button>
+          {asset && (
+            <Button variant="ghost" size="sm" onClick={handleRemove} loading={removing} style={{ color: 'var(--danger)' }}>
+              Remove
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Brand file list ─────────────────────────────────────── */
+
+function BrandFileRow({ asset, brandCtx, onDone }: { asset: ClientAsset; brandCtx: BrandCtx; onDone: () => void }) {
+  const [deleting, setDeleting] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  async function handleDelete() {
+    if (!confirm(`Delete "${asset.name}"?`)) return
+    setDeleting(true); setErr(null)
+    try {
+      await deleteBrandFile(asset, brandCtx)
+      onDone()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Delete failed')
+    } finally { setDeleting(false) }
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--hairline-2)' }}>
+      <span style={{ fontSize: 16, flexShrink: 0 }}>{asset.mime_type?.startsWith('image/') ? '🖼' : '📄'}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <button
+          onClick={() => openBrandFile(asset)}
+          style={{ fontSize: 13, fontWeight: 500, color: 'var(--violet)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100%', fontFamily: 'var(--font-sans)', textAlign: 'left' }}
+        >
+          {asset.name}
+        </button>
+        <p style={{ fontSize: 11.5, color: 'var(--muted)' }}>{formatBytes(asset.size_bytes ?? 0)}</p>
+        {err && <p style={{ fontSize: 11.5, color: 'var(--danger)' }}>{err}</p>}
+      </div>
+      <Button variant="ghost" size="sm" onClick={handleDelete} loading={deleting} style={{ color: 'var(--danger)', flexShrink: 0 }}>Delete</Button>
+    </div>
+  )
+}
+
 /* ── Main component ──────────────────────────────────────── */
 
 export function BrandSection({ client, ctx, onChanged }: Props) {
@@ -146,6 +304,28 @@ export function BrandSection({ client, ctx, onChanged }: Props) {
   const [editing, setEditing] = useState<EditingCard>(null)
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState<string | null>(null)
+
+  // Brand assets + logo IDs
+  const brandCtx: BrandCtx = { agencyId: ctx.agencyId, clientId: client.id, actorId: ctx.actorId }
+  const { primaryLogo, secondaryLogo, iconLogo, otherFiles, loading: assetsLoading, error: assetsError, refresh: refreshAssets } = useBrandAssets(client)
+  const savedVisualForAssets = readVisual(dd)
+  const logoIds = savedVisualForAssets.logo_ids
+
+  const brandFileInputRef = useRef<HTMLInputElement>(null)
+  const [brandFileUploading, setBrandFileUploading] = useState(false)
+  const [brandFileErr, setBrandFileErr] = useState<string | null>(null)
+
+  async function handleBrandFileUpload(file: File) {
+    setBrandFileUploading(true); setBrandFileErr(null)
+    try {
+      await uploadBrandFile(file, brandCtx)
+      refreshAssets(); onChanged()
+    } catch (e) {
+      setBrandFileErr(e instanceof Error ? e.message : 'Upload failed')
+    } finally { setBrandFileUploading(false) }
+  }
+
+  function handleLogoChanged() { refreshAssets(); onChanged() }
 
   /* ── Visual Identity ─────────────────────────────────── */
   const savedVisual = readVisual(dd)
@@ -370,6 +550,57 @@ export function BrandSection({ client, ctx, onChanged }: Props) {
           </div>
         )}
       </Card>
+
+      {/* ── Brand Assets ─────────────────────────────────── */}
+      <div style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hairline-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>Brand Assets</h3>
+        </div>
+        <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {assetsError && <p style={{ fontSize: 12.5, color: 'var(--danger)' }}>Could not load assets: {assetsError}</p>}
+
+          {/* Logos */}
+          <div>
+            <p style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 12 }}>Logos</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <LogoSlotCard slot="primary"   label="Primary Logo"   asset={primaryLogo}   logoIds={logoIds} brandCtx={brandCtx} onDone={handleLogoChanged} />
+              <LogoSlotCard slot="secondary" label="Secondary Logo" asset={secondaryLogo} logoIds={logoIds} brandCtx={brandCtx} onDone={handleLogoChanged} />
+              <LogoSlotCard slot="icon"      label="Brand Icon"     asset={iconLogo}      logoIds={logoIds} brandCtx={brandCtx} onDone={handleLogoChanged} />
+            </div>
+          </div>
+
+          {/* Brand files */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <p style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)' }}>Brand Files</p>
+              <div>
+                <input
+                  ref={brandFileInputRef}
+                  type="file"
+                  accept="image/*,.pdf,.zip,.svg,.ai,.eps"
+                  style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleBrandFileUpload(f); e.target.value = '' }}
+                />
+                <Button variant="ghost" size="sm" onClick={() => brandFileInputRef.current?.click()} loading={brandFileUploading}>
+                  Upload File
+                </Button>
+              </div>
+            </div>
+            {brandFileErr && <p style={{ fontSize: 12.5, color: 'var(--danger)', marginBottom: 8 }}>{brandFileErr}</p>}
+            {assetsLoading ? (
+              <p style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</p>
+            ) : otherFiles.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>No brand files uploaded yet — add brand guidelines, photography, or reference files.</p>
+            ) : (
+              <div>
+                {otherFiles.map(asset => (
+                  <BrandFileRow key={asset.id} asset={asset} brandCtx={brandCtx} onDone={() => { refreshAssets(); onChanged() }} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
     </div>
   )

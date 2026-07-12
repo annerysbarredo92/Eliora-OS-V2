@@ -68,11 +68,14 @@ export function MarketSection({ client, ctx, onChanged }: Props) {
     finally { setCompSaving(false) }
   }
 
+  const [compDeleteError, setCompDeleteError] = useState<string | null>(null)
+
   async function confirmDeleteComp() {
     if (!deletingComp) return
-    setCompDeleting(true)
+    setCompDeleting(true); setCompDeleteError(null)
     try { await deleteCompetitor(deletingComp.id, client.id, ctx); setDeletingComp(null); refreshComp(); onChanged() }
-    catch { /* stays open */ } finally { setCompDeleting(false) }
+    catch (e) { setCompDeleteError(e instanceof Error ? e.message : 'Delete failed') }
+    finally { setCompDeleting(false) }
   }
 
   /* ── SWOT ────────────────────────────────────────────── */
@@ -97,7 +100,7 @@ export function MarketSection({ client, ctx, onChanged }: Props) {
       }
       const outcome = await generate(brief, 1, 'swot_analysis', ctx)
       if (outcome.error) { setAiSwotError(outcome.error); return }
-      const raw = outcome.result as Record<string, unknown>
+      const raw = outcome.result as unknown as Record<string, unknown>
       const swotRaw = raw.swot as MarketSWOT | undefined
       if (swotRaw) { setSwotDraft(swotRaw) }
       else {
@@ -350,11 +353,11 @@ export function MarketSection({ client, ctx, onChanged }: Props) {
       <ConfirmDialog
         open={!!deletingComp}
         title="Delete Competitor"
-        description={`Delete "${deletingComp?.name}"? This cannot be undone.`}
+        description={compDeleteError ?? `Delete "${deletingComp?.name}"? This cannot be undone.`}
         confirmLabel="Delete"
         loading={compDeleting}
         onConfirm={confirmDeleteComp}
-        onCancel={() => setDeletingComp(null)}
+        onCancel={() => { setDeletingComp(null); setCompDeleteError(null) }}
       />
     </div>
   )

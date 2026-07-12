@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { ChipList } from '@/components/ui/ChipList'
 import { DrawerPanel, DrawerFooter } from '@/components/ui/DrawerPanel'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { createProduct, updateProduct, deleteProduct, type ProductFormValues } from '@/features/products/api'
+import { createProduct, updateProduct, deleteProduct, setProductImage, type ProductFormValues } from '@/features/products/api'
 import { useProducts } from '@/features/products/hooks'
-import type { Client, ClientProductService, ProductType, PricingType, ProductStatus } from '@/types'
+import { supabase } from '@/lib/supabase'
+import { storagePath, uploadToStorage, removeFromStorage, signedUrl, formatBytes } from '@/lib/storage'
+import type { Client, ClientProductService, ClientAsset, ProductType, PricingType, ProductStatus } from '@/types'
 
 interface Props {
   client: Client
@@ -90,29 +92,100 @@ export function ProductsSection({ client, ctx, onChanged }: Props) {
     setDrawerError(null); setDrawerOpen(true)
   }
 
-  async function save() {
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  async function confirmDelete() {
+    if (!deletingItem) return
+    setDeleting(true); setDeleteError(null)
+    try {
+      await deleteProduct(deletingItem.id, client.id, ctx)
+      setDeletingItem(null); refresh(); onChanged()
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Delete failed')
+    } finally { setDeleting(false) }
+  }
+
+  // Product image state — applies to the currently-open drawer
+  const [imageAsset, setImageAsset]   = useState<ClientAsset | null>(null)
+  const [imageUrl, setImageUrl]       = useState<string | null>(null)
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imageErr, setImageErr]       = useState<string | null>(null)
+  const imgInputRef = useRef<HTMLInputElement>(null)
+
+  // Load the existing image asset when opening a product for edit
+  useEffect(() => {
+    if (!drawerOpen || !editing?.primary_asset_id) { setImageAsset(null); setImageUrl(null); return }
+    let cancelled = false
+    supabase.from('client_assets').select('*').eq('id', editing.primary_asset_id).maybeSingle().then(({ data }) => {
+      if (cancelled || !data) return
+      setImageAsset(data as ClientAsset)
+      signedUrl((data as ClientAsset).storage_path).then(u => { if (!cancelled) setImageUrl(u) })
+    })
+    return () => { cancelled = true }
+  }, [drawerOpen, editing?.primary_asset_id])
+
+  async function handleImageUpload(file: File) {
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'].includes(file.type)) {
+      setImageErr('Only image files are supported for product thumbnails'); return
+    }
+    if (file.size > 10 * 1024 * 1024) { setImageErr('Image must be under 10 MB'); return }
+    setImageUploading(true); setImageErr(null)
+    const path = storagePath(ctx.agencyId, client.id, 'products', file.name)
+    try {
+      await uploadToStorage(path, file)
+      const { data: asset, error: ie } = await supabase.from('client_assets').insert({
+        agency_id: ctx.agencyId, client_id: client.id, name: file.name,
+        storage_path: path, mime_type: file.type, size_bytes: file.size,
+        owner_role: 'agency', is_client_visible: false, created_by: ctx.actorId, updated_by: ctx.actorId,
+      }).select('*').single()
+      if (ie) { await removeFromStorage(path); throw new Error(ie.message) }
+      setImageAsset(asset as ClientAsset)
+      signedUrl(path).then(u => setImageUrl(u))
+    } catch (e) {
+      setImageErr(e instanceof Error ? e.message : 'Upload failed')
+    } finally { setImageUploading(false) }
+  }
+
+  async function handleImageClear() {
+    setImageAsset(null); setImageUrl(null); setImageErr(null)
+  }
+
+  // Extended openEdit to clear image state
+  const originalOpenEdit = openEdit
+  function openEditWithImage(p: ClientProductService) {
+    setImageAsset(null); setImageUrl(null); setImageErr(null)
+    originalOpenEdit(p)
+  }
+
+  function openAddWithImage() {
+    setImageAsset(null); setImageUrl(null); setImageErr(null)
+    openAdd()
+  }
+
+  // Override save to set product image after saving
+  async function saveWithImage() {
     if (!form.name.trim()) { setDrawerError('Name is required'); return }
     setSaving(true); setDrawerError(null)
     try {
+      let savedId: string | undefined
       if (editing) {
         await updateProduct(editing.id, client.id, form, ctx)
+        savedId = editing.id
       } else {
-        await createProduct(client.id, form, ctx)
+        const p = await createProduct(client.id, form, ctx)
+        savedId = p.id
+      }
+      if (savedId) {
+        const targetAssetId = imageAsset?.id ?? null
+        const currentAssetId = editing?.primary_asset_id ?? null
+        if (targetAssetId !== currentAssetId) {
+          await setProductImage(savedId, client.id, targetAssetId, ctx)
+        }
       }
       setDrawerOpen(false); refresh(); onChanged()
     } catch (e) {
       setDrawerError(e instanceof Error ? e.message : 'Failed to save')
     } finally { setSaving(false) }
-  }
-
-  async function confirmDelete() {
-    if (!deletingItem) return
-    setDeleting(true)
-    try {
-      await deleteProduct(deletingItem.id, client.id, ctx)
-      setDeletingItem(null); refresh(); onChanged()
-    } catch { /* ignored — ConfirmDialog stays open */ }
-    finally { setDeleting(false) }
   }
 
   const filtered = products.filter(p =>
@@ -131,7 +204,7 @@ export function ProductsSection({ client, ctx, onChanged }: Props) {
             <FilterChip key={t.value} active={typeFilter === t.value} onClick={() => setTypeFilter(t.value)}>{t.label}</FilterChip>
           ))}
         </div>
-        <Button variant="primary" size="sm" onClick={openAdd}>+ Add</Button>
+        <Button variant="primary" size="sm" onClick={openAddWithImage}>+ Add</Button>
       </div>
 
       {/* Status filter */}
@@ -160,8 +233,9 @@ export function ProductsSection({ client, ctx, onChanged }: Props) {
             <ProductCard
               key={p.id}
               product={p}
-              onEdit={() => openEdit(p)}
-              onDelete={() => setDeletingItem(p)}
+              onEdit={() => openEditWithImage(p)}
+              onDelete={() => { setDeleteError(null); setDeletingItem(p) }}
+              agencyId={ctx.agencyId}
             />
           ))}
         </div>
@@ -176,7 +250,7 @@ export function ProductsSection({ client, ctx, onChanged }: Props) {
         footer={
           <DrawerFooter
             onCancel={() => setDrawerOpen(false)}
-            onConfirm={save}
+            onConfirm={saveWithImage}
             loading={saving}
             error={drawerError}
             confirmLabel={editing ? 'Save Changes' : 'Add Offering'}
@@ -236,6 +310,31 @@ export function ProductsSection({ client, ctx, onChanged }: Props) {
             />
             Include in AI context for this client
           </label>
+
+          {/* Product image */}
+          <div>
+            <p style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 8 }}>Product Image (optional)</p>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div style={{ width: 64, height: 64, borderRadius: 8, border: '1px solid var(--hairline)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                {imageUrl ? (
+                  <img src={imageUrl} alt="Product" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: 22, color: 'var(--muted)' }}>🖼</span>
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                {imageAsset && <p style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 4 }}>{imageAsset.name} ({formatBytes(imageAsset.size_bytes ?? 0)})</p>}
+                {imageErr && <p style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 4 }}>{imageErr}</p>}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input ref={imgInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = '' }} />
+                  <Button variant="ghost" size="sm" onClick={() => imgInputRef.current?.click()} loading={imageUploading}>
+                    {imageAsset ? 'Replace' : 'Upload'}
+                  </Button>
+                  {imageAsset && <Button variant="ghost" size="sm" onClick={handleImageClear} style={{ color: 'var(--danger)' }}>Remove</Button>}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </DrawerPanel>
 
@@ -243,11 +342,11 @@ export function ProductsSection({ client, ctx, onChanged }: Props) {
       <ConfirmDialog
         open={!!deletingItem}
         title="Delete Offering"
-        description={`Delete "${deletingItem?.name}"? This cannot be undone.`}
+        description={deleteError ? deleteError : `Delete "${deletingItem?.name}"? This cannot be undone.`}
         confirmLabel="Delete"
         loading={deleting}
         onConfirm={confirmDelete}
-        onCancel={() => setDeletingItem(null)}
+        onCancel={() => { setDeletingItem(null); setDeleteError(null) }}
       />
     </div>
   )
@@ -288,10 +387,21 @@ function SelectField({ label, value, onChange, children }: { label: string; valu
 }
 
 function ProductCard({ product, onEdit, onDelete }: {
-  product: ClientProductService; onEdit: () => void; onDelete: () => void
+  product: ClientProductService; onEdit: () => void; onDelete: () => void; agencyId?: string
 }) {
   const st = STATUS_OPTIONS.find(s => s.value === product.status)
   const tp = PRODUCT_TYPES.find(t => t.value === product.type)
+
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!product.primary_asset_id) { setThumbUrl(null); return }
+    let cancelled = false
+    supabase.from('client_assets').select('storage_path').eq('id', product.primary_asset_id).maybeSingle().then(({ data }) => {
+      if (cancelled || !data) return
+      signedUrl((data as { storage_path: string }).storage_path).then(u => { if (!cancelled) setThumbUrl(u) })
+    })
+    return () => { cancelled = true }
+  }, [product.primary_asset_id])
 
   return (
     <div style={{
@@ -304,6 +414,11 @@ function ProductCard({ product, onEdit, onDelete }: {
       alignItems: 'flex-start',
       gap: 12,
     }}>
+      {thumbUrl && (
+        <div style={{ width: 48, height: 48, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--hairline)' }}>
+          <img src={thumbUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{product.name}</span>

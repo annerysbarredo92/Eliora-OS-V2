@@ -40,11 +40,6 @@ const truncate = (s: unknown, len = 120): string => {
   return str.length > len ? str.slice(0, len) + '…' : str
 }
 
-const dv = (data: Record<string, unknown>, key: string): string | null => {
-  const v = data[key]
-  return typeof v === 'string' && v.trim() ? v.trim() : null
-}
-
 const CARD: React.CSSProperties = {
   background: 'var(--surface-solid)',
   border: '1px solid var(--hairline)',
@@ -144,9 +139,12 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
     i => ['overdue', 'sent'].includes(i.status) && i.amount_paid_cents < i.total_cents,
   ) ?? null
 
-  const brandVoice   = dv(client.discovery_data, 'brand_voice')
-  const brandMission = dv(client.discovery_data, 'brand_mission')
-  const brandTagline = dv(client.discovery_data, 'current_tagline')
+  const dd = client.discovery_data as Record<string, unknown>
+  const _bv = (dd.brand_voice ?? {}) as Record<string, unknown>
+  const _bs = (dd.brand_strategy ?? {}) as Record<string, unknown>
+  const brandVoice   = typeof _bv.voice_descriptor === 'string' && _bv.voice_descriptor.trim() ? _bv.voice_descriptor.trim() : null
+  const brandMission = typeof _bs.mission === 'string' && _bs.mission.trim() ? _bs.mission.trim() : null
+  const brandTagline = Array.isArray(_bs.taglines) && typeof _bs.taglines[0] === 'string' && _bs.taglines[0].trim() ? _bs.taglines[0].trim() : null
   const hasBrand     = !!(brandVoice || brandMission || brandTagline)
 
   const health    = computeBusinessHealth(client)

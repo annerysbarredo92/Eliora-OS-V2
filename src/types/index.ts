@@ -668,6 +668,7 @@ export interface ClientProductService {
   price_label: string | null; status: ProductStatus
   seasonal_availability: string | null; include_in_ai_context: boolean
   sort_order: number
+  primary_asset_id: string | null
   created_by: string | null; updated_by: string | null
   created_at: string; updated_at: string
 }

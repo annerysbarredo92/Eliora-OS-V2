@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Textarea } from '@/components/ui/Textarea'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -11,7 +11,10 @@ import {
   type DiscoveryNoteFormValues,
 } from '@/features/discovery/notes-api'
 import { useDiscoveryNotes } from '@/features/discovery/hooks'
-import type { Client, DiscoveryBusiness, DiscoveryAudience, DiscoveryMarketing, DiscoveryNote, DiscoveryAISummary } from '@/types'
+import { supabase } from '@/lib/supabase'
+import { uploadFile, deleteFile, type FilesCtx } from '@/features/files/api'
+import { openStoredFile, formatBytes } from '@/lib/storage'
+import type { Client, DiscoveryBusiness, DiscoveryAudience, DiscoveryMarketing, DiscoveryNote, DiscoveryAISummary, ClientAsset } from '@/types'
 
 interface Props {
   client: Client
@@ -142,8 +145,8 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
       }
       const outcome = await generate(brief, 1, 'discovery_summary', ctx)
       if (outcome.error) { setAiError(outcome.error); return }
-      const raw = outcome.result as Record<string, unknown>
-      setAiDraft((raw.content as string | undefined) ?? outcome.result.captions?.[0] ?? '')
+      const raw = outcome.result as unknown as Record<string, unknown>
+      setAiDraft((raw.content as string | undefined) ?? (outcome.result as unknown as Record<string, unknown[]>).captions?.[0] as string | undefined ?? '')
     } catch (e) {
       setAiError(e instanceof Error ? e.message : 'AI generation failed')
     } finally { setAiGenerating(false) }
@@ -189,15 +192,82 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
     } finally { setNoteSaving(false) }
   }
 
+  const [noteDeleteError, setNoteDeleteError] = useState<string | null>(null)
+
   async function deleteNote() {
     if (!deletingNote) return
-    setNoteDeleting(true)
+    setNoteDeleting(true); setNoteDeleteError(null)
     try {
       await deleteDiscoveryNote(deletingNote.id, client.id, ctx)
       setDeletingNote(null); refreshNotes()
-    } catch { /* error swallowed intentionally — UI already shows confirm */ }
-    finally { setNoteDeleting(false) }
+    } catch (e) {
+      setNoteDeleteError(e instanceof Error ? e.message : 'Delete failed')
+    } finally { setNoteDeleting(false) }
   }
+
+  /* ── Discovery Documents ─────────────────────────────── */
+  const filesCtx: FilesCtx = { agencyId: ctx.agencyId, clientId: client.id, actorId: ctx.actorId, role: 'agency' }
+  const [discFolderId, setDiscFolderId] = useState<string | null>(null)
+  const [discFiles, setDiscFiles]       = useState<ClientAsset[]>([])
+  const [discLoading, setDiscLoading]   = useState(true)
+  const [discError, setDiscError]       = useState<string | null>(null)
+  const [discUploading, setDiscUploading] = useState(false)
+  const [discUploadErr, setDiscUploadErr] = useState<string | null>(null)
+  const discFileInputRef = useRef<HTMLInputElement>(null)
+  const [tick, setTick] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    setDiscLoading(true); setDiscError(null)
+    async function load() {
+      try {
+        const { data: folders } = await supabase.from('asset_folders').select('id, name').eq('client_id', client.id).order('sort_order')
+        const folder = (folders ?? []).find((f: { id: string; name: string }) => f.name === 'Discovery Documents')
+        if (!folder) { if (!cancelled) { setDiscFiles([]); setDiscLoading(false) }; return }
+        if (!cancelled) setDiscFolderId(folder.id)
+        const { data: files, error: fe } = await supabase.from('client_assets').select('*').eq('client_id', client.id).eq('folder_id', folder.id).eq('is_archived', false).order('created_at', { ascending: false })
+        if (!cancelled) {
+          if (fe) setDiscError(fe.message)
+          else setDiscFiles((files ?? []) as ClientAsset[])
+        }
+      } catch (e) {
+        if (!cancelled) setDiscError((e as Error).message)
+      } finally {
+        if (!cancelled) setDiscLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [client.id, tick])
+
+  async function handleDiscUpload(file: File) {
+    if (!discFolderId) { setDiscUploadErr('Discovery Documents folder not found. Save a discovery note first to initialize.'); return }
+    setDiscUploading(true); setDiscUploadErr(null)
+    try {
+      await uploadFile(file, { folderId: discFolderId, isClientVisible: false }, filesCtx)
+      setTick(t => t + 1)
+    } catch (e) {
+      setDiscUploadErr(e instanceof Error ? e.message : 'Upload failed')
+    } finally { setDiscUploading(false) }
+  }
+
+  async function handleDiscDelete(asset: ClientAsset) {
+    if (!confirm(`Delete "${asset.name}"?`)) return
+    try {
+      await deleteFile(asset, filesCtx)
+      setTick(t => t + 1)
+    } catch (e) {
+      setDiscError(e instanceof Error ? e.message : 'Delete failed')
+    }
+  }
+
+  /* ── Stale indicator ─────────────────────────────────── */
+  const isAISummaryStale = (() => {
+    if (!existingSummary?.generated_at || !client.updated_at) return false
+    const generatedAt = new Date(existingSummary.generated_at).getTime()
+    const updatedAt = new Date(client.updated_at).getTime()
+    return updatedAt - generatedAt > 5000
+  })()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -206,9 +276,16 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
       <div style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
         <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hairline-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>AI Discovery Summary</h3>
-          <Button variant="ghost" size="sm" onClick={generateAISummary} loading={aiGenerating}>
-            {existingSummary ? 'Regenerate' : 'Generate'}
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isAISummaryStale && (
+              <span style={{ fontSize: 11.5, color: 'var(--warning)', fontWeight: 600, background: 'color-mix(in srgb, var(--warning) 12%, transparent)', padding: '2px 8px', borderRadius: 99 }}>
+                Stale — data changed
+              </span>
+            )}
+            <Button variant="ghost" size="sm" onClick={generateAISummary} loading={aiGenerating}>
+              {existingSummary ? 'Regenerate' : 'Generate'}
+            </Button>
+          </div>
         </div>
         <div style={{ padding: '16px 18px' }}>
           {aiError && <p style={{ fontSize: 12.5, color: 'var(--danger)', marginBottom: 10 }}>{aiError}</p>}
@@ -225,8 +302,9 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
             <div>
               <p style={{ fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{existingSummary.summary}</p>
               {existingSummary.generated_at && (
-                <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 8 }}>
+                <p style={{ fontSize: 11.5, color: isAISummaryStale ? 'var(--warning)' : 'var(--muted)', marginTop: 8 }}>
                   Generated {new Date(existingSummary.generated_at).toLocaleDateString()}
+                  {isAISummaryStale ? ' · Source data has changed — consider regenerating.' : ''}
                 </p>
               )}
             </div>
@@ -415,15 +493,62 @@ export function DiscoverySection({ client, ctx, onChanged }: Props) {
         </div>
       </DrawerPanel>
 
+      {/* ── Discovery Documents ───────────────────────────── */}
+      <div style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hairline-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.01em' }}>Discovery Documents</h3>
+          <div>
+            <input
+              ref={discFileInputRef}
+              type="file"
+              style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleDiscUpload(f); e.target.value = '' }}
+            />
+            <Button variant="ghost" size="sm" onClick={() => discFileInputRef.current?.click()} loading={discUploading}>
+              Upload
+            </Button>
+          </div>
+        </div>
+        <div style={{ padding: '16px 18px' }}>
+          {discUploadErr && <p style={{ fontSize: 12.5, color: 'var(--danger)', marginBottom: 8 }}>{discUploadErr}</p>}
+          {discError && <p style={{ fontSize: 12.5, color: 'var(--danger)', marginBottom: 8 }}>{discError}</p>}
+          {discLoading ? (
+            <p style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</p>
+          ) : discFiles.length === 0 ? (
+            <p style={{ fontSize: 13.5, color: 'var(--muted)', fontStyle: 'italic' }}>
+              No documents uploaded yet. Upload briefs, contracts, research, or reference files.
+            </p>
+          ) : (
+            <div>
+              {discFiles.map(asset => (
+                <div key={asset.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--hairline-2)' }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{asset.mime_type?.startsWith('image/') ? '🖼' : '📄'}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <button
+                      onClick={() => openStoredFile(asset.storage_path)}
+                      style={{ fontSize: 13, fontWeight: 500, color: 'var(--violet)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100%', fontFamily: 'var(--font-sans)', textAlign: 'left' }}
+                    >
+                      {asset.name}
+                    </button>
+                    <p style={{ fontSize: 11.5, color: 'var(--muted)' }}>{formatBytes(asset.size_bytes ?? 0)}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => handleDiscDelete(asset)} style={{ color: 'var(--danger)', flexShrink: 0 }}>Delete</Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* ── Delete confirm ────────────────────────────────── */}
       <ConfirmDialog
         open={!!deletingNote}
         title="Delete Discovery Note"
-        description={`Delete "${deletingNote?.title}"? This cannot be undone.`}
+        description={noteDeleteError ? noteDeleteError : `Delete "${deletingNote?.title}"? This cannot be undone.`}
         confirmLabel="Delete"
         loading={noteDeleting}
         onConfirm={deleteNote}
-        onCancel={() => setDeletingNote(null)}
+        onCancel={() => { setDeletingNote(null); setNoteDeleteError(null) }}
       />
 
     </div>

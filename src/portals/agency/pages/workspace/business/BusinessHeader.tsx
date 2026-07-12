@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { EmailComposer, type ContactOption } from '@/features/email/EmailComposer'
 import { primaryContact, statusLabel, STATUS_BADGE } from '@/features/clients/helpers'
 import { ensureThread, sendMessage } from '@/features/messaging/api'
+import { usePrimaryLogoUrl } from '@/features/brand/hooks'
 import type { Client } from '@/types'
 
 interface Props {
@@ -22,6 +23,7 @@ export function BusinessHeader({ client, ctx, onRequestAI }: Props) {
   const [noteSaving, setNoteSaving] = useState(false)
 
   const pc = primaryContact(client)
+  const { url: primaryLogoUrl } = usePrimaryLogoUrl(client)
 
   const contacts: ContactOption[] = (client.client_contacts ?? [])
     .filter(c => !!c.email)
@@ -85,11 +87,15 @@ export function BusinessHeader({ client, ctx, onRequestAI }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-            background: 'linear-gradient(135deg, var(--violet), var(--iris))',
+            background: primaryLogoUrl ? 'var(--surface-solid)' : 'linear-gradient(135deg, var(--violet), var(--iris))',
+            border: primaryLogoUrl ? '1px solid var(--hairline)' : 'none',
             display: 'grid', placeItems: 'center',
             color: '#fff', fontWeight: 700, fontSize: 13,
+            overflow: 'hidden',
           }}>
-            {initials}
+            {primaryLogoUrl ? (
+              <img src={primaryLogoUrl} alt={client.business_name} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 3 }} />
+            ) : initials}
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
