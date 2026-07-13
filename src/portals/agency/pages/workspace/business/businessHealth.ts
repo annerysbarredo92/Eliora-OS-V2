@@ -71,6 +71,9 @@ export interface AccountDataForHealth {
   invoiceCount: number
   totalCollectedCents: number
   hasActiveRetainer: boolean
+  // Dynamic denominator: if retainerCount > 0 the client has used retainers, so
+  // active retainer becomes a required signal. If 0, score from 3 project signals only.
+  retainerCount: number
 }
 
 export function computeBusinessHealth(client: Client, accountData?: AccountDataForHealth): BusinessHealthResult {
@@ -197,16 +200,20 @@ export function computeBusinessHealth(client: Client, accountData?: AccountDataF
   ]
 
   // Account dimension — only added when async data is available from BusinessOverview.
-  // 4 signals, each worth 25%. Retainer is a bonus; project-based clients can reach
-  // 75% on proposals + contracts + payments alone.
+  // Dynamic denominator: if client has used retainers (retainerCount > 0), active retainer
+  // is a 4th signal (denominator = 4). Project-based clients (retainerCount === 0) are
+  // scored on 3 signals only (denominator = 3) so they can reach 100% without a retainer.
+  // A failed retainer request (retainerCount stays 0) also avoids penalising the score.
   if (accountData) {
+    const hasEverUsedRetainer = accountData.retainerCount > 0
     const accountChecks = [
       accountData.proposalCount > 0,
       accountData.signedContractCount > 0 || accountData.contractCount > 0,
       accountData.totalCollectedCents > 0,
-      accountData.hasActiveRetainer,
+      ...(hasEverUsedRetainer ? [accountData.hasActiveRetainer] : []),
     ]
-    const accountScore = pct(accountChecks.filter(Boolean).length, accountChecks.length)
+    const denominator = hasEverUsedRetainer ? 4 : 3
+    const accountScore = pct(accountChecks.filter(Boolean).length, denominator)
     const accountTips = [
       !accountChecks[0] && 'no proposals on file',
       !accountChecks[1] && 'no contracts on file',

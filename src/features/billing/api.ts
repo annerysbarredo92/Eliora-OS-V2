@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { logActivity } from '@/features/activity/api'
-import type { Invoice, InvoiceItem, Payment, InvoiceStatus, PaymentMethod } from '@/types'
+import type { Invoice, InvoiceItem, Payment, Refund, InvoiceStatus, PaymentMethod } from '@/types'
 
 interface Ctx { agencyId: string; actorId: string }
 
@@ -60,10 +60,68 @@ export async function setInvoiceStatus(inv: Invoice, status: InvoiceStatus, ctx:
   if (error) throw new Error(error.message)
   await logActivity({ agencyId: ctx.agencyId, actorId: ctx.actorId, clientId: inv.client_id, action: 'invoice.status_changed', entityType: 'invoice', entityId: inv.id, description: `Invoice ${inv.number} → ${status}` })
 }
+/** @deprecated Use recordInvoicePaymentSafe instead. */
 export async function recordPayment(inv: Invoice, amountCents: number, method: PaymentMethod, ctx: Ctx): Promise<void> {
   const { error } = await supabase.from('payments').insert({ agency_id: ctx.agencyId, client_id: inv.client_id, invoice_id: inv.id, amount_cents: amountCents, method, recorded_by: ctx.actorId })
   if (error) throw new Error(error.message)
   await logActivity({ agencyId: ctx.agencyId, actorId: ctx.actorId, clientId: inv.client_id, action: 'payment.recorded', entityType: 'invoice', entityId: inv.id, description: `Recorded payment on ${inv.number}` })
+}
+
+function _fmtCents(cents: number): string {
+  return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+}
+
+export function parsePaymentError(msg: string): string {
+  if (msg.includes('invoice_not_found'))        return 'Invoice not found or access denied.'
+  if (msg.includes('invoice_void_or_archived')) return 'Cannot record payment against a void or archived invoice.'
+  if (msg.includes('invoice_draft'))            return 'Invoice must be sent before recording a payment.'
+  if (msg.includes('invoice_already_paid'))     return 'This invoice has already been fully paid.'
+  if (msg.includes('amount_invalid'))           return 'Amount must be greater than zero.'
+  if (msg.includes('overpayment')) {
+    const m = msg.match(/(\d+) cents outstanding/)
+    if (m) return `Amount exceeds the outstanding balance of ${_fmtCents(parseInt(m[1], 10))}.`
+    return 'Amount exceeds the outstanding balance on this invoice.'
+  }
+  return msg
+}
+
+export async function recordInvoicePaymentSafe(
+  invoiceId: string,
+  amountCents: number,
+  method: PaymentMethod,
+  note: string,
+  idempotencyKey: string,
+  ctx: Ctx,
+): Promise<{ payment: Payment; invoice: Invoice; idempotent: boolean }> {
+  const { data, error } = await supabase.rpc('record_invoice_payment_safe', {
+    p_invoice_id:      invoiceId,
+    p_amount_cents:    amountCents,
+    p_method:          method,
+    p_note:            note || null,
+    p_idempotency_key: idempotencyKey,
+    p_actor_id:        ctx.actorId,
+  })
+  if (error) throw new Error(parsePaymentError(error.message))
+  const result = data as { payment: Payment; invoice: Invoice; idempotent: boolean }
+  if (!result.idempotent) {
+    await logActivity({
+      agencyId: ctx.agencyId, actorId: ctx.actorId,
+      clientId: result.payment.client_id,
+      action: 'payment.recorded', entityType: 'invoice', entityId: invoiceId,
+      description: `Recorded ${_fmtCents(amountCents)} payment on invoice`,
+    })
+  }
+  return result
+}
+
+export async function listRefundsByClient(clientId: string): Promise<Refund[]> {
+  const { data, error } = await supabase
+    .from('refunds')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('refunded_at', { ascending: false })
+  if (error) { console.error('listRefundsByClient:', error.message); throw new Error(error.message) }
+  return (data ?? []) as Refund[]
 }
 
 /** Returns total payment amount_cents recorded in the current calendar month. */

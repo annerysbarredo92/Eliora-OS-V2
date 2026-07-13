@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useClients } from '@/features/clients/hooks'
 import * as B from '@/features/billing/api'
+import { recordInvoicePaymentSafe } from '@/features/billing/api'
 import { money, toCents } from '@/features/operations/helpers'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { Button } from '@/components/ui/Button'
@@ -102,7 +103,8 @@ function CreateInvoice({ open, clients, onClose, onCreated, ctx }: { open: boole
 
 function InvoiceDetail({ invoice, clientName, ctx, onChanged, onClose }: { invoice: Invoice; clientName: string; ctx: { agencyId: string; actorId: string }; onChanged: () => void; onClose: () => void }) {
   const [payAmount, setPayAmount] = useState(''); const [method, setMethod] = useState<PaymentMethod>('manual'); const [busy, setBusy] = useState(false)
-  async function pay() { setBusy(true); try { await B.recordPayment(invoice, toCents(payAmount), method, ctx); onChanged(); onClose() } finally { setBusy(false) } }
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
+  async function pay() { setBusy(true); try { await recordInvoicePaymentSafe(invoice.id, toCents(payAmount), method, '', idempotencyKey, ctx); onChanged(); onClose() } catch { setBusy(false) } }
   return (
     <Modal open onClose={onClose} title={invoice.number ?? 'Invoice'} subtitle={`${clientName} · ${money(invoice.total_cents)}`} width={520}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

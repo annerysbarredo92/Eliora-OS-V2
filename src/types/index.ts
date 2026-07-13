@@ -628,7 +628,8 @@ export interface Invoice {
   is_client_visible: boolean; created_at: string; updated_at: string
 }
 export interface InvoiceItem { id: string; agency_id: string; client_id: string; invoice_id: string; name: string; description: string | null; quantity: number; unit_price_cents: number; sort_order: number }
-export interface Payment { id: string; agency_id: string; client_id: string; invoice_id: string | null; amount_cents: number; method: PaymentMethod; note: string | null; recorded_at: string }
+export interface Payment { id: string; agency_id: string; client_id: string; invoice_id: string | null; amount_cents: number; method: PaymentMethod; note: string | null; recorded_by: string | null; idempotency_key: string | null; recorded_at: string }
+export interface Refund { id: string; agency_id: string; client_id: string; invoice_id: string | null; amount_cents: number; reason: string | null; refunded_by: string | null; refunded_at: string }
 
 /* ── Wave 3: Performance, KPIs, Calendar, Tasks ─────────── */
 export interface ContentMetrics { id: string; agency_id: string; client_id: string; content_id: string; views: number; reach: number; engagement: number; clicks: number; likes: number; comments: number; shares: number; saves: number; recorded_at: string }

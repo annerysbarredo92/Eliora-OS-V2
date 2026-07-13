@@ -42,11 +42,14 @@ declare
   _old retainers;
   _new retainers;
 begin
-  -- Verify caller belongs to the agency that owns this retainer.
+  -- Lock + verify: caller belongs to the agency, and no concurrent renewal can proceed
+  -- until this transaction commits. The retainers_renewal_unique_idx prevents a second
+  -- successor even if two transactions somehow both pass the status check.
   select * into _old
     from retainers
    where id = p_old_id
-     and agency_id = public.current_agency_id();
+     and agency_id = public.current_agency_id()
+  for update;
 
   if not found then
     raise exception 'retainer not found or access denied';

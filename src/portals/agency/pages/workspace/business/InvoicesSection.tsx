@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import * as B from '@/features/billing/api'
+import { recordInvoicePaymentSafe, parsePaymentError } from '@/features/billing/api'
 import { money, toCents } from '@/features/operations/helpers'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -259,6 +260,8 @@ function InvoiceDetailModal({ invoice, ctx, onStatus, onChanged, onClose }: {
   const [payMethod, setPayMethod] = useState<PaymentMethod>('manual')
   const [busy, setBusy]         = useState(false)
   const [err, setErr]           = useState<string | null>(null)
+  // Stable idempotency key per modal open — same key on retry, new key next time.
+  const [idempotencyKey]        = useState(() => crypto.randomUUID())
 
   useEffect(() => {
     B.getInvoice(invoice.id).then(r => {
@@ -269,15 +272,14 @@ function InvoiceDetailModal({ invoice, ctx, onStatus, onChanged, onClose }: {
   async function handlePay(e: React.FormEvent) {
     e.preventDefault()
     const cents = toCents(payAmount)
-    if (cents <= 0)        { setErr('Enter a valid amount'); return }
-    if (cents > outstanding) { setErr(`Amount exceeds outstanding balance of ${money(outstanding)}`); return }
+    if (cents <= 0) { setErr('Enter a valid amount'); return }
     setBusy(true); setErr(null)
     try {
-      await B.recordPayment(invoice, cents, payMethod, ctx)
+      await recordInvoicePaymentSafe(invoice.id, cents, payMethod, '', idempotencyKey, ctx)
       await onChanged()
       onClose()
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Failed to record payment')
+      setErr(parsePaymentError(e instanceof Error ? e.message : 'Failed to record payment'))
       setBusy(false)
     }
   }

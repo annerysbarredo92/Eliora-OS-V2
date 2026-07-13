@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
-import { listPaymentsByClient, listInvoices, recordPayment } from '@/features/billing/api'
+import {
+  listPaymentsByClient, listInvoices, listRefundsByClient,
+  recordInvoicePaymentSafe, parsePaymentError,
+} from '@/features/billing/api'
 import { money, toCents } from '@/features/operations/helpers'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import type { Client, Payment, Invoice, InvoiceStatus, PaymentMethod } from '@/types'
+import type { Client, Payment, Refund, Invoice, InvoiceStatus, PaymentMethod } from '@/types'
 
 const METHOD_LABEL: Record<string, string> = {
   manual:        'Manual',
@@ -36,6 +39,7 @@ interface Props {
 
 export function PaymentsSection({ client, ctx, onChanged }: Props) {
   const [payments, setPayments] = useState<Payment[]>([])
+  const [refunds, setRefunds]   = useState<Refund[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState<string | null>(null)
@@ -44,11 +48,12 @@ export function PaymentsSection({ client, ctx, onChanged }: Props) {
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const [p, i] = await Promise.all([
+      const [p, r, i] = await Promise.all([
         listPaymentsByClient(client.id),
+        listRefundsByClient(client.id),
         listInvoices(client.id),
       ])
-      setPayments(p); setInvoices(i)
+      setPayments(p); setRefunds(r); setInvoices(i)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load payments')
     } finally {
@@ -61,9 +66,11 @@ export function PaymentsSection({ client, ctx, onChanged }: Props) {
   const invoiceMap = Object.fromEntries(invoices.map(i => [i.id, i]))
   const openInvoices = invoices.filter(i => (OPEN_STATUSES as string[]).includes(i.status))
 
-  const totalCollected    = payments.reduce((sum, p) => sum + p.amount_cents, 0)
-  const totalOutstanding  = openInvoices.reduce((sum, i) => sum + Math.max(i.total_cents - i.amount_paid_cents, 0), 0)
-  const lastPayment       = payments[0] ?? null
+  const totalCollected   = payments.reduce((sum, p) => sum + p.amount_cents, 0)
+  const totalRefunded    = refunds.reduce((sum, r) => sum + r.amount_cents, 0)
+  const netCollected     = totalCollected - totalRefunded
+  const totalOutstanding = openInvoices.reduce((sum, i) => sum + Math.max(i.total_cents - i.amount_paid_cents, 0), 0)
+  const lastPayment      = payments[0] ?? null
 
   const now = new Date()
   const thisMonthCollected = payments
@@ -116,6 +123,12 @@ export function PaymentsSection({ client, ctx, onChanged }: Props) {
       {!loading && !error && (payments.length > 0 || invoices.length > 0) && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 20 }}>
           <MetricCard label="Total Collected" value={money(totalCollected)} color="var(--success)" />
+          {totalRefunded > 0 && (
+            <MetricCard label="Refunded" value={`-${money(totalRefunded)}`} color="var(--danger)" />
+          )}
+          {totalRefunded > 0 && (
+            <MetricCard label="Net Collected" value={money(netCollected)} color={netCollected > 0 ? 'var(--success)' : 'var(--warning)'} />
+          )}
           <MetricCard label="This Month" value={money(thisMonthCollected)} />
           <MetricCard label="Outstanding" value={money(totalOutstanding)} color={totalOutstanding > 0 ? 'var(--warning)' : undefined} />
           <MetricCard label="Payments" value={String(payments.length)} />
@@ -133,7 +146,7 @@ export function PaymentsSection({ client, ctx, onChanged }: Props) {
         </div>
       )}
 
-      {!loading && !error && payments.length === 0 && (
+      {!loading && !error && payments.length === 0 && refunds.length === 0 && (
         <div style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', padding: '48px 32px', textAlign: 'center', maxWidth: 480, margin: '0 auto' }}>
           <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 8, letterSpacing: '-0.02em' }}>No payments recorded</p>
           <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6 }}>
@@ -145,7 +158,7 @@ export function PaymentsSection({ client, ctx, onChanged }: Props) {
       )}
 
       {!loading && !error && payments.length > 0 && (
-        <div style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', overflow: 'hidden', marginBottom: refunds.length > 0 ? 16 : 0 }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
@@ -193,6 +206,52 @@ export function PaymentsSection({ client, ctx, onChanged }: Props) {
         </div>
       )}
 
+      {/* ── Refunds (display-only) ────────────────────────── */}
+      {!loading && !error && refunds.length > 0 && (
+        <div style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+          <p style={{
+            fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
+            color: 'var(--muted)', padding: '11px 16px', borderBottom: '1px solid var(--hairline-2)',
+          }}>
+            Refunds
+          </p>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', color: 'var(--muted)', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                  {['Amount', 'Invoice', 'Reason', 'Date'].map(h => (
+                    <th key={h} style={{ padding: '11px 16px', fontWeight: 700, borderBottom: '1px solid var(--hairline-2)', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {refunds.map(r => {
+                  const inv = r.invoice_id ? invoiceMap[r.invoice_id] : null
+                  return (
+                    <tr key={r.id}>
+                      <td style={CELL}>
+                        <span style={{ fontWeight: 700, color: 'var(--danger)', fontSize: 14 }}>−{money(r.amount_cents)}</span>
+                      </td>
+                      <td style={CELL}>
+                        {inv
+                          ? <span style={{ color: 'var(--ink-2)' }}>{inv.title ?? inv.number ?? 'Invoice'}</span>
+                          : <span style={{ color: 'var(--muted)' }}>—</span>}
+                      </td>
+                      <td style={CELL}>
+                        <span style={{ color: 'var(--ink-2)' }}>{r.reason ?? '—'}</span>
+                      </td>
+                      <td style={CELL}>
+                        <span style={{ color: 'var(--muted)' }}>{new Date(r.refunded_at).toLocaleDateString()}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {payTarget && (
         <RecordPaymentModal
           invoice={payTarget}
@@ -217,20 +276,21 @@ function RecordPaymentModal({ invoice, ctx, onClose, onRecorded }: {
   const [method, setMethod]       = useState<PaymentMethod>('manual')
   const [busy, setBusy]           = useState(false)
   const [err, setErr]             = useState<string | null>(null)
+  // Stable key for this submit attempt — same key on retry, new key on next modal open.
+  const [idempotencyKey]          = useState(() => crypto.randomUUID())
 
   const outstanding = invoice.total_cents - invoice.amount_paid_cents
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     const cents = toCents(amountStr)
-    if (cents <= 0)          { setErr('Enter a valid amount'); return }
-    if (cents > outstanding) { setErr(`Amount exceeds outstanding balance of ${money(outstanding)}`); return }
+    if (cents <= 0) { setErr('Enter a valid amount'); return }
     setBusy(true); setErr(null)
     try {
-      await recordPayment(invoice, cents, method, ctx)
+      await recordInvoicePaymentSafe(invoice.id, cents, method, '', idempotencyKey, ctx)
       await onRecorded()
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Failed to record payment')
+      setErr(e instanceof Error ? parsePaymentError(e.message) : 'Failed to record payment')
       setBusy(false)
     }
   }

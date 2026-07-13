@@ -134,55 +134,56 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange, onAccount
       else { console.error('listRetainers:', rResult.reason); setRetainersError(true) }
 
       // Compute account completion and health data from successfully-loaded sources.
-      // Failed sources stay 'empty' — never misrepresent an error as empty content.
+      // Failed sources → 'unknown' — never misrepresent a load failure as empty content.
+      // Payments completion: based on collected total and whether non-draft/void/archived
+      // invoices have any outstanding balance. Void and archived do NOT count as delinquent.
+      const totalCollected = iResult.status === 'fulfilled'
+        ? i.reduce((s, inv) => s + inv.amount_paid_cents, 0)
+        : 0
+      const relevantInvoices = iResult.status === 'fulfilled'
+        ? i.filter(inv => !['draft', 'void', 'archived'].includes(inv.status))
+        : []
+      const hasOutstanding = relevantInvoices.some(inv => inv.amount_paid_cents < inv.total_cents)
+
+      const completionData: import('./useCompletionStatus').AccountCompletionData = {
+        proposals: pResult.status !== 'fulfilled' ? 'unknown'
+          : p.length === 0 ? 'empty'
+          : p.some(x => x.status === 'accepted') ? 'complete' : 'partial',
+
+        contracts: cResult.status !== 'fulfilled' ? 'unknown'
+          : c.length === 0 ? 'empty'
+          : c.some(x => x.status === 'signed') ? 'complete' : 'partial',
+
+        invoices: iResult.status !== 'fulfilled' ? 'unknown'
+          : i.length === 0 ? 'empty'
+          : i.some(x => x.status === 'paid') ? 'complete' : 'partial',
+
+        // empty = no payments collected; partial = collected but outstanding balances remain;
+        // complete = collected and no non-void/non-archived invoices have outstanding balance.
+        payments: iResult.status !== 'fulfilled' ? 'unknown'
+          : totalCollected === 0 ? 'empty'
+          : !hasOutstanding ? 'complete' : 'partial',
+
+        retainers: rResult.status !== 'fulfilled' ? 'unknown'
+          : r.length === 0 ? 'empty'
+          : r.some(x => x.status === 'active') ? 'complete' : 'partial',
+      }
+
+      const healthData: AccountDataForHealth = {
+        proposalCount:       pResult.status === 'fulfilled' ? p.length : 0,
+        contractCount:       cResult.status === 'fulfilled' ? c.length : 0,
+        signedContractCount: cResult.status === 'fulfilled' ? c.filter(x => x.status === 'signed').length : 0,
+        invoiceCount:        iResult.status === 'fulfilled' ? i.length : 0,
+        totalCollectedCents: totalCollected,
+        hasActiveRetainer:   rResult.status === 'fulfilled' && r.some(x => x.status === 'active'),
+        // Dynamic denominator: > 0 means client has used retainers, so retainer is scored.
+        // 0 on failure → project-based scoring (no penalty for unavailable data).
+        retainerCount:       rResult.status === 'fulfilled' ? r.length : 0,
+      }
+
+      setAccountHealthData(healthData)
       if (onAccountLoaded) {
-        const paidInvoices   = i.filter(inv => inv.status === 'paid')
-        const totalCollected = i.reduce((s, inv) => s + inv.amount_paid_cents, 0)
-        const allPaid = i.length > 0 && i.filter(inv => !['draft','void','archived'].includes(inv.status)).every(inv => inv.amount_paid_cents >= inv.total_cents)
-
-        const completionData: import('./useCompletionStatus').AccountCompletionData = {
-          proposals: pResult.status !== 'fulfilled' ? 'empty'
-            : p.length === 0 ? 'empty'
-            : p.some(x => x.status === 'accepted') ? 'complete' : 'partial',
-
-          contracts: cResult.status !== 'fulfilled' ? 'empty'
-            : c.length === 0 ? 'empty'
-            : c.some(x => x.status === 'signed') ? 'complete' : 'partial',
-
-          invoices: iResult.status !== 'fulfilled' ? 'empty'
-            : i.length === 0 ? 'empty'
-            : paidInvoices.length > 0 ? 'complete' : 'partial',
-
-          payments: iResult.status !== 'fulfilled' ? 'empty'
-            : totalCollected === 0 ? 'empty'
-            : allPaid ? 'complete' : 'partial',
-
-          retainers: rResult.status !== 'fulfilled' ? 'empty'
-            : r.length === 0 ? 'empty'
-            : r.some(x => x.status === 'active') ? 'complete' : 'partial',
-        }
-
-        const healthData: AccountDataForHealth = {
-          proposalCount:       p.length,
-          contractCount:       c.length,
-          signedContractCount: c.filter(x => x.status === 'signed').length,
-          invoiceCount:        i.length,
-          totalCollectedCents: totalCollected,
-          hasActiveRetainer:   r.some(x => x.status === 'active'),
-        }
-
-        setAccountHealthData(healthData)
         onAccountLoaded(completionData, healthData)
-      } else {
-        // Even without a parent listener, update local health data
-        setAccountHealthData({
-          proposalCount:       p.length,
-          contractCount:       c.length,
-          signedContractCount: c.filter(x => x.status === 'signed').length,
-          invoiceCount:        i.length,
-          totalCollectedCents: i.reduce((s, inv) => s + inv.amount_paid_cents, 0),
-          hasActiveRetainer:   r.some(x => x.status === 'active'),
-        })
       }
     }).finally(() => setAccountLoading(false))
   }, [client.id])

@@ -2,7 +2,10 @@
 ==============================================================
 ELIORA OS — WAVE 4 VERIFICATION
 ==============================================================
-Run after applying 01-retainers.sql and 02-retainer-rpcs.sql.
+Run after applying ALL Wave 4 SQL files in order:
+  01-retainers.sql
+  02-retainer-rpcs.sql
+  03-safe-record-payment.sql
 All queries should return the expected results.
 ==============================================================
 */
@@ -58,7 +61,8 @@ select column_name, data_type, is_nullable, column_default
 select indexname
   from pg_indexes
  where tablename = 'retainers';
--- expected: retainers_pkey, retainers_client_idx, retainers_agency_idx, retainers_renewal_idx
+-- expected: retainers_pkey, retainers_client_idx, retainers_agency_idx,
+--           retainers_renewal_idx, retainers_renewal_unique_idx
 
 -- ── RPC exists ────────────────────────────────────────────────────────────────
 select proname, pronargs
@@ -71,6 +75,28 @@ select tgname
   from pg_trigger
  where tgrelid = 'retainers'::regclass;
 -- expected: retainers_set_updated_at
+
+-- ── Safe payment RPC ─────────────────────────────────────────────────────────
+select routine_name
+  from information_schema.routines
+ where routine_name = 'record_invoice_payment_safe'
+   and routine_type = 'FUNCTION';
+-- expected: 1 row
+
+-- ── idempotency_key column on payments ────────────────────────────────────────
+select column_name, data_type, is_nullable
+  from information_schema.columns
+ where table_name = 'payments'
+   and column_name = 'idempotency_key'
+   and table_schema = 'public';
+-- expected: 1 row, data_type = 'text', is_nullable = 'YES'
+
+-- ── idempotency index ─────────────────────────────────────────────────────────
+select indexname, indexdef
+  from pg_indexes
+ where tablename = 'payments'
+   and indexname = 'payments_idempotency_idx';
+-- expected: 1 row with UNIQUE partial index WHERE idempotency_key IS NOT NULL
 
 -- ── Smoke test: insert and delete a draft ────────────────────────────────────
 -- (Only run in a test/dev environment with an authenticated admin session)

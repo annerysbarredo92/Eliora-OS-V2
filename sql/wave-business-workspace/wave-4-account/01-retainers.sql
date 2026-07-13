@@ -81,6 +81,14 @@ create index if not exists retainers_agency_idx  on retainers(agency_id, created
 create index if not exists retainers_renewal_idx on retainers(previous_retainer_id)
   where previous_retainer_id is not null;
 
+-- Prevent a retainer from being renewed twice:
+-- each old retainer may have AT MOST ONE direct successor.
+-- Combined with FOR UPDATE in the renew_retainer RPC, this prevents
+-- concurrent double-renewal from creating two successor records.
+create unique index if not exists retainers_renewal_unique_idx
+  on retainers(previous_retainer_id)
+  where previous_retainer_id is not null;
+
 -- ── 4. TRIGGER ────────────────────────────────────────────────────────────────
 drop trigger if exists retainers_set_updated_at on retainers;
 create trigger retainers_set_updated_at

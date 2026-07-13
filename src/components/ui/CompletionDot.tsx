@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export type CompletionStatus = 'complete' | 'partial' | 'empty'
+export type CompletionStatus = 'complete' | 'partial' | 'empty' | 'unknown'
 
 interface CompletionDotProps {
   status: CompletionStatus
@@ -12,12 +12,14 @@ const STATUS_STYLES: Record<CompletionStatus, React.CSSProperties> = {
   complete: { background: 'var(--violet)' },
   partial:  { background: 'var(--warning)' },
   empty:    { background: 'transparent', border: '1.5px solid var(--muted)' },
+  unknown:  { background: 'transparent', border: '1.5px dashed var(--muted)', opacity: 0.45 },
 }
 
 const STATUS_LABEL: Record<CompletionStatus, string> = {
   complete: 'complete',
   partial:  'partially complete',
   empty:    'empty',
+  unknown:  'status unavailable',
 }
 
 export function CompletionDot({ status, tooltip, size = 7 }: CompletionDotProps) {
