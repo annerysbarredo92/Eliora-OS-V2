@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { BusinessOverview }           from './BusinessOverview'
 import { CompanySection }             from './CompanySection'
@@ -17,7 +17,8 @@ import { BusinessSidebar, ICONS }     from './BusinessSidebar'
 import { BusinessHeader }             from './BusinessHeader'
 import { BusinessSectionPlaceholder } from './BusinessSectionPlaceholder'
 import { BusinessErrorBoundary }      from './BusinessErrorBoundary'
-import { useCompletionStatus }        from './useCompletionStatus'
+import { useCompletionStatus, type AccountCompletionData } from './useCompletionStatus'
+import type { AccountDataForHealth } from './businessHealth'
 import { CompletionDot }              from '@/components/ui/CompletionDot'
 import type { CompletionStatus }      from '@/components/ui/CompletionDot'
 import { SECTIONS, resolveSectionId, type SectionId, type SectionDef } from './sections'
@@ -35,7 +36,13 @@ export function BusinessShell({ client, ctx, onChanged, onRequestAI }: Props) {
   const rawSection = searchParams.get('section')
   const section = resolveSectionId(rawSection)
 
-  const completionStatus = useCompletionStatus(client)
+  const [accountCompletion, setAccountCompletion] = useState<AccountCompletionData | undefined>(undefined)
+  const handleAccountLoaded = useCallback(
+    (data: AccountCompletionData, _health: AccountDataForHealth) => { setAccountCompletion(data) },
+    [],
+  )
+
+  const completionStatus = useCompletionStatus(client, accountCompletion)
 
   function changeSection(id: string) {
     setSearchParams(
@@ -117,6 +124,7 @@ export function BusinessShell({ client, ctx, onChanged, onRequestAI }: Props) {
                 ctx={ctx}
                 onChanged={onChanged}
                 onSectionChange={changeSection}
+                onAccountLoaded={handleAccountLoaded}
               />
             </div>
           </BusinessErrorBoundary>
@@ -143,9 +151,10 @@ interface RendererProps {
   ctx: { agencyId: string; actorId: string }
   onChanged: () => void
   onSectionChange: (id: string) => void
+  onAccountLoaded: (data: AccountCompletionData, health: AccountDataForHealth) => void
 }
 
-function SectionRenderer({ section, client, ctx, onChanged, onSectionChange }: RendererProps) {
+function SectionRenderer({ section, client, ctx, onChanged, onSectionChange, onAccountLoaded }: RendererProps) {
   const def = SECTIONS.find(s => s.id === section)!
 
   switch (section) {
@@ -155,6 +164,7 @@ function SectionRenderer({ section, client, ctx, onChanged, onSectionChange }: R
           client={client}
           ctx={ctx}
           onSectionChange={onSectionChange}
+          onAccountLoaded={onAccountLoaded}
         />
       )
     case 'company':

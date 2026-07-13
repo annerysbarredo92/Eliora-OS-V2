@@ -10,13 +10,15 @@ import { listRetainers } from '@/features/retainers/api'
 import { contactName, HEALTH_LABEL, HEALTH_BADGE, relativeTime } from '@/features/clients/helpers'
 import { money } from '@/features/operations/helpers'
 import { FREQUENCY_LABELS } from '@/features/retainers/api'
-import { computeBusinessHealth, computeAIReadiness } from './businessHealth'
+import { computeBusinessHealth, computeAIReadiness, type AccountDataForHealth } from './businessHealth'
+import type { AccountCompletionData } from './useCompletionStatus'
 import type { Client, Proposal, Contract, Invoice, Retainer, GoalStatus } from '@/types'
 
 interface Props {
   client: Client
   ctx: { agencyId: string; actorId: string }
   onSectionChange: (id: string) => void
+  onAccountLoaded?: (data: AccountCompletionData, health: AccountDataForHealth) => void
 }
 
 const PROPOSAL_STATUS_LABEL: Record<string, string> = {
@@ -86,7 +88,7 @@ function healthColor(score: number): string {
   return 'var(--danger)'
 }
 
-export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) {
+export function BusinessOverview({ client, ctx: _ctx, onSectionChange, onAccountLoaded }: Props) {
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -114,17 +116,74 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
       listInvoices(client.id),
       listRetainers(client.id),
     ]).then(([pResult, cResult, iResult, rResult]) => {
-      if (pResult.status === 'fulfilled') setProposals(pResult.value)
+      const p: Proposal[] = pResult.status === 'fulfilled' ? pResult.value : []
+      const c: Contract[] = cResult.status === 'fulfilled' ? cResult.value : []
+      const i: Invoice[]  = iResult.status === 'fulfilled' ? iResult.value : []
+      const r: Retainer[] = rResult.status === 'fulfilled' ? rResult.value : []
+
+      if (pResult.status === 'fulfilled') setProposals(p)
       else { console.error('listProposalsByClient:', pResult.reason); setProposalsError(true) }
 
-      if (cResult.status === 'fulfilled') setContracts(cResult.value)
+      if (cResult.status === 'fulfilled') setContracts(c)
       else { console.error('listContractsByClient:', cResult.reason); setContractsError(true) }
 
-      if (iResult.status === 'fulfilled') setInvoices(iResult.value)
+      if (iResult.status === 'fulfilled') setInvoices(i)
       else { console.error('listInvoices:', iResult.reason); setInvoicesError(true) }
 
-      if (rResult.status === 'fulfilled') setRetainers(rResult.value)
+      if (rResult.status === 'fulfilled') setRetainers(r)
       else { console.error('listRetainers:', rResult.reason); setRetainersError(true) }
+
+      // Compute account completion and health data from successfully-loaded sources.
+      // Failed sources stay 'empty' — never misrepresent an error as empty content.
+      if (onAccountLoaded) {
+        const paidInvoices   = i.filter(inv => inv.status === 'paid')
+        const totalCollected = i.reduce((s, inv) => s + inv.amount_paid_cents, 0)
+        const allPaid = i.length > 0 && i.filter(inv => !['draft','void','archived'].includes(inv.status)).every(inv => inv.amount_paid_cents >= inv.total_cents)
+
+        const completionData: import('./useCompletionStatus').AccountCompletionData = {
+          proposals: pResult.status !== 'fulfilled' ? 'empty'
+            : p.length === 0 ? 'empty'
+            : p.some(x => x.status === 'accepted') ? 'complete' : 'partial',
+
+          contracts: cResult.status !== 'fulfilled' ? 'empty'
+            : c.length === 0 ? 'empty'
+            : c.some(x => x.status === 'signed') ? 'complete' : 'partial',
+
+          invoices: iResult.status !== 'fulfilled' ? 'empty'
+            : i.length === 0 ? 'empty'
+            : paidInvoices.length > 0 ? 'complete' : 'partial',
+
+          payments: iResult.status !== 'fulfilled' ? 'empty'
+            : totalCollected === 0 ? 'empty'
+            : allPaid ? 'complete' : 'partial',
+
+          retainers: rResult.status !== 'fulfilled' ? 'empty'
+            : r.length === 0 ? 'empty'
+            : r.some(x => x.status === 'active') ? 'complete' : 'partial',
+        }
+
+        const healthData: AccountDataForHealth = {
+          proposalCount:       p.length,
+          contractCount:       c.length,
+          signedContractCount: c.filter(x => x.status === 'signed').length,
+          invoiceCount:        i.length,
+          totalCollectedCents: totalCollected,
+          hasActiveRetainer:   r.some(x => x.status === 'active'),
+        }
+
+        setAccountHealthData(healthData)
+        onAccountLoaded(completionData, healthData)
+      } else {
+        // Even without a parent listener, update local health data
+        setAccountHealthData({
+          proposalCount:       p.length,
+          contractCount:       c.length,
+          signedContractCount: c.filter(x => x.status === 'signed').length,
+          invoiceCount:        i.length,
+          totalCollectedCents: i.reduce((s, inv) => s + inv.amount_paid_cents, 0),
+          hasActiveRetainer:   r.some(x => x.status === 'active'),
+        })
+      }
     }).finally(() => setAccountLoading(false))
   }, [client.id])
 
@@ -154,7 +213,9 @@ export function BusinessOverview({ client, ctx: _ctx, onSectionChange }: Props) 
   const brandTagline = Array.isArray(_bs.taglines) && typeof _bs.taglines[0] === 'string' && _bs.taglines[0].trim() ? _bs.taglines[0].trim() : null
   const hasBrand     = !!(brandVoice || brandMission || brandTagline)
 
-  const health    = computeBusinessHealth(client)
+  const [accountHealthData, setAccountHealthData] = useState<AccountDataForHealth | undefined>(undefined)
+
+  const health    = computeBusinessHealth(client, accountHealthData)
   const readiness = computeAIReadiness(client)
 
   // Priority alert: pick the single highest-priority real issue.

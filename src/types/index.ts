@@ -805,8 +805,16 @@ export interface EmailEvent {
 }
 
 /* ── Wave 4 Business Workspace: Retainers ───────────────── */
-export type RetainerStatus    = 'active' | 'paused' | 'completed' | 'cancelled'
+// Approved lifecycle: draft → active ⇄ paused; active/paused/ending → ending → ended
+// Renewal creates a NEW retainer linked via previous_retainer_id; old → ended.
+export type RetainerStatus    = 'draft' | 'active' | 'paused' | 'ending' | 'ended'
 export type RetainerFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annually' | 'custom'
+
+export interface RetainerIncludedService {
+  name: string
+  description: string | null
+  sort_order: number
+}
 
 export interface Retainer {
   id: string
@@ -821,6 +829,13 @@ export interface Retainer {
   end_date: string | null
   next_billing_date: string | null
   is_auto_renew: boolean
+  paused_at: string | null
+  ended_at: string | null
+  included_services: RetainerIncludedService[]
+  invoice_config: Record<string, unknown> | null
+  linked_proposal_id: string | null
+  linked_contract_id: string | null
+  previous_retainer_id: string | null
   notes: string | null
   created_by: string | null
   updated_by: string | null

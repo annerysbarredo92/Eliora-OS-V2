@@ -61,7 +61,19 @@ function hasDiscoveryMarketing(dd: Record<string, unknown>): boolean {
 }
 
 
-export function computeBusinessHealth(client: Client): BusinessHealthResult {
+// Optional account data passed from BusinessOverview after async load.
+// If omitted, the Account dimension is excluded from the health score.
+// A client without a retainer is NOT penalised — retainer is a bonus signal.
+export interface AccountDataForHealth {
+  proposalCount: number
+  contractCount: number
+  signedContractCount: number
+  invoiceCount: number
+  totalCollectedCents: number
+  hasActiveRetainer: boolean
+}
+
+export function computeBusinessHealth(client: Client, accountData?: AccountDataForHealth): BusinessHealthResult {
   const d = client.discovery_data ?? {}
 
   /* 1. Company Identity */
@@ -184,10 +196,42 @@ export function computeBusinessHealth(client: Client): BusinessHealthResult {
     },
   ]
 
-  // Weighted score: identity 30, context 20, social 15, contacts 20, discovery 15
-  const weights = [0.30, 0.20, 0.15, 0.20, 0.15]
+  // Account dimension — only added when async data is available from BusinessOverview.
+  // 4 signals, each worth 25%. Retainer is a bonus; project-based clients can reach
+  // 75% on proposals + contracts + payments alone.
+  if (accountData) {
+    const accountChecks = [
+      accountData.proposalCount > 0,
+      accountData.signedContractCount > 0 || accountData.contractCount > 0,
+      accountData.totalCollectedCents > 0,
+      accountData.hasActiveRetainer,
+    ]
+    const accountScore = pct(accountChecks.filter(Boolean).length, accountChecks.length)
+    const accountTips = [
+      !accountChecks[0] && 'no proposals on file',
+      !accountChecks[1] && 'no contracts on file',
+      !accountChecks[2] && 'no payments recorded',
+    ].filter(Boolean) as string[]
+
+    dimensions.push({
+      id: 'account',
+      label: 'Account',
+      score: accountScore,
+      max: 100,
+      status: dimStatus(accountScore),
+      sectionId: 'proposals',
+      tip: accountTips.length ? `Missing: ${accountTips.slice(0, 2).join(', ')}` : null,
+    })
+  }
+
+  // Weights: identity 28, context 18, social 14, contacts 18, discovery 14, account 8
+  // (account weight only applies when the dimension is present)
+  const baseWeights = [0.30, 0.20, 0.15, 0.20, 0.15]
+  const accountWeight = accountData ? 0.08 : 0
+  const scale = 1 - accountWeight
   const score = Math.round(
-    dimensions.reduce((sum, dim, i) => sum + dim.score * weights[i], 0),
+    dimensions.slice(0, 5).reduce((sum, dim, i) => sum + dim.score * baseWeights[i] * scale, 0) +
+    (accountData ? (dimensions[5]?.score ?? 0) * accountWeight : 0)
   )
 
   return { score, dimensions }

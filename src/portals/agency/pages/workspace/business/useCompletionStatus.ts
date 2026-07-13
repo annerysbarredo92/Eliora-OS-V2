@@ -2,6 +2,17 @@ import type { CompletionStatus } from '@/components/ui/CompletionDot'
 import type { Client } from '@/types'
 import type { SectionId } from './sections'
 
+// Account completion data passed in from BusinessOverview after async load.
+// 'empty' means the section has no records; 'partial' means some; 'complete' means threshold met.
+// 'failed' is never used — failed requests leave the dot at 'empty', not misrepresented.
+export interface AccountCompletionData {
+  proposals: CompletionStatus
+  contracts: CompletionStatus
+  invoices: CompletionStatus
+  payments: CompletionStatus
+  retainers: CompletionStatus
+}
+
 /* ── JSONB domain helpers ────────────────────────────────── */
 
 function hasVoiceDomain(dd: Record<string, unknown>): boolean {
@@ -24,7 +35,10 @@ function countDomainFields(domain: Record<string, unknown> | undefined): number 
   }).length
 }
 
-export function useCompletionStatus(client: Client): Record<SectionId, CompletionStatus> {
+export function useCompletionStatus(
+  client: Client,
+  accountData?: AccountCompletionData,
+): Record<SectionId, CompletionStatus> {
   const dd = (client.discovery_data ?? {}) as Record<string, unknown>
 
   /* ── Company ──────────────────────────────────────────── */
@@ -109,10 +123,18 @@ export function useCompletionStatus(client: Client): Record<SectionId, Completio
     products,
     goals,
     'market-intelligence': marketIntelligence,
-    proposals:             'empty',
-    contracts:             'empty',
-    invoices:              'empty',
-    payments:              'empty',
-    retainers:             'empty',
+    // Account sections: use async data from BusinessOverview when available.
+    // Rules (per section):
+    //   proposals: empty=0, partial=1+ (non-accepted), complete=1+ accepted
+    //   contracts: empty=0, partial=1+ (non-signed), complete=1+ signed
+    //   invoices:  empty=0, partial=1+ sent/viewed, complete=1+ paid
+    //   payments:  empty=no paid, partial=some outstanding, complete=all invoices paid
+    //   retainers: empty=0, partial=draft/paused/ending, complete=active
+    // Failed requests leave the dot at 'empty' — never misrepresent error as content.
+    proposals: accountData?.proposals ?? 'empty',
+    contracts: accountData?.contracts ?? 'empty',
+    invoices:  accountData?.invoices  ?? 'empty',
+    payments:  accountData?.payments  ?? 'empty',
+    retainers: accountData?.retainers ?? 'empty',
   }
 }

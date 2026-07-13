@@ -269,7 +269,8 @@ function InvoiceDetailModal({ invoice, ctx, onStatus, onChanged, onClose }: {
   async function handlePay(e: React.FormEvent) {
     e.preventDefault()
     const cents = toCents(payAmount)
-    if (cents <= 0) { setErr('Enter a valid amount'); return }
+    if (cents <= 0)        { setErr('Enter a valid amount'); return }
+    if (cents > outstanding) { setErr(`Amount exceeds outstanding balance of ${money(outstanding)}`); return }
     setBusy(true); setErr(null)
     try {
       await B.recordPayment(invoice, cents, payMethod, ctx)
