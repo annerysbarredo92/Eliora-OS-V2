@@ -19,6 +19,8 @@ import { PricingPage }     from '@/pages/public/PricingPage'
 import { LoginPage }       from '@/pages/auth/LoginPage'
 import { SignupPage }      from '@/pages/auth/SignupPage'
 import { ForgotPage }      from '@/pages/auth/ForgotPage'
+import { AuthCallbackPage }   from '@/pages/auth/AuthCallbackPage'
+import { ResetPasswordPage }  from '@/pages/auth/ResetPasswordPage'
 
 // Agency pages
 import { AgencyHome }           from '@/portals/agency/pages/Home'
@@ -66,6 +68,17 @@ export const router = createBrowserRouter([
       { path: '/login',   element: <LoginPage /> },
       { path: '/signup',  element: <SignupPage /> },
       { path: '/forgot',  element: <ForgotPage /> },
+
+      /* Supabase auth redirects (password recovery, magic link, OAuth) land
+       * here. Deliberately NOT wrapped by RequireAuth — see AuthCallbackPage
+       * for why it must be reachable with no session yet. */
+      { path: '/auth/callback', element: <AuthCallbackPage /> },
+
+      /* Reached only via a PASSWORD_RECOVERY session (AuthProvider.tsx
+       * `recovery` flag) redirected here by RequireAuth or AuthCallbackPage.
+       * Deliberately NOT wrapped by RequireAuth — a recovery session is not
+       * a normal authenticated session. */
+      { path: '/reset-password', element: <ResetPasswordPage /> },
     ],
   },
 

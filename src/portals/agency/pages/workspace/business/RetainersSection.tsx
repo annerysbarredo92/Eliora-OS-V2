@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
-import type { Client, Retainer, RetainerStatus, RetainerFrequency, RetainerIncludedService } from '@/types'
+import type { Client, Retainer, RetainerStatus, RetainerFrequency } from '@/types'
 
 const STATUS_BADGE: Record<RetainerStatus, 'default' | 'success' | 'warning' | 'danger' | 'brand'> = {
   draft:   'default',
