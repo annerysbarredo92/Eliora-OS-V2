@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { markRecoveryPending } from '@/lib/recoveryIntent'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
@@ -14,6 +15,11 @@ export function ForgotPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+
+    // Mark recovery-intent BEFORE sending the email, not after any Supabase
+    // event arrives — see recoveryIntent.ts. Deliberately independent of
+    // whatever event/URL shape the actual callback produces.
+    markRecoveryPending()
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/callback`,
