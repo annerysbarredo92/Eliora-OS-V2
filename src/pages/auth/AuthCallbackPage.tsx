@@ -26,13 +26,20 @@ type Phase = 'working' | 'error'
  */
 export function AuthCallbackPage() {
   const navigate = useNavigate()
-  const { profile, loading, recovery } = useAuth()
+  const { profile, loading, recovery, beginRecovery, completeRecovery } = useAuth()
   const [phase, setPhase] = useState<Phase>('working')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   function fail(message: string) {
     setErrorMessage(message)
     setPhase('error')
+    // If `type=recovery` was already flagged below (ahead of the exchange)
+    // and the exchange itself then failed or never produced a session,
+    // tear recovery back down. Otherwise a user who already got routed to
+    // /reset-password on the strength of that early flag would see the
+    // password form with no real session behind it, instead of a clear
+    // expired-link message. Harmless no-op when recovery was never set.
+    void completeRecovery()
   }
 
   // Step 1 — establish the session from whatever Supabase put in the URL.
@@ -50,6 +57,15 @@ export function AuthCallbackPage() {
         return
       }
 
+      // Detect a password-recovery link BEFORE exchanging the code, and flag
+      // recovery mode immediately. Supabase's PKCE code exchange is not
+      // guaranteed to emit a PASSWORD_RECOVERY event for a recovery link —
+      // it may emit a plain SIGNED_IN, which would otherwise read as a
+      // completed normal sign-in. Setting this synchronously, ahead of the
+      // exchange, means no event ordering can let normal portal routing win.
+      const type = url.searchParams.get('type') || hashParams.get('type')
+      if (type === 'recovery') beginRecovery()
+
       const code = url.searchParams.get('code')
       if (code) {
         // PKCE / code-exchange flow — the flow this Supabase JS version uses
@@ -61,7 +77,9 @@ export function AuthCallbackPage() {
         if (error) fail(error.message)
         // On success, say nothing here — AuthProvider's onAuthStateChange
         // fires SIGNED_IN or PASSWORD_RECOVERY off this same exchange, and
-        // step 2 below reacts to that.
+        // step 2 below reacts to that (recovery, if flagged above, is
+        // already true and cannot be cleared by that event — see
+        // AuthProvider.tsx's loadFromSession).
         return
       }
 

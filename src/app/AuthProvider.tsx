@@ -30,6 +30,16 @@ export interface AuthContextValue extends AuthState {
    * to decide which portal to route into.
    */
   completeRecovery: () => Promise<UserProfile | null>
+  /**
+   * Call the instant AuthCallbackPage detects `type=recovery` in the
+   * callback URL — BEFORE exchanging the code for a session. Supabase's
+   * PKCE code exchange is not guaranteed to emit `PASSWORD_RECOVERY`; it
+   * may emit a plain `SIGNED_IN` for a recovery link. Setting recovery
+   * mode synchronously here, ahead of that event, means no event ordering
+   * can ever let normal portal routing win the race — see loadFromSession
+   * below, which deliberately never clears `recovery` on its own.
+   */
+  beginRecovery: () => void
 }
 
 const initialState: AuthState = { profile: null, loading: true, error: null, recovery: false }
@@ -37,6 +47,7 @@ const initialState: AuthState = { profile: null, loading: true, error: null, rec
 const AuthContext = createContext<AuthContextValue>({
   ...initialState,
   completeRecovery: async () => null,
+  beginRecovery: () => {},
 })
 
 /**
@@ -61,14 +72,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function loadFromSession(session: Session | null) {
       if (!session?.user) {
-        if (mounted) setState({ profile: null, loading: false, error: null, recovery: false })
+        // This branch only runs from the initial bootstrap getSession()
+        // call below — the event-handler call site further down never
+        // invokes loadFromSession with a null session, it pre-filters that
+        // itself. A null session here can race with AuthCallbackPage's
+        // beginRecovery(): the app's own startup splash (App.tsx) can delay
+        // this bootstrap call long enough that it resolves with "no
+        // session yet" AFTER beginRecovery() already flagged recovery
+        // mode, ahead of the code exchange landing. Hardcoding
+        // `recovery: false` here would silently clobber that flag before
+        // the exchange even finishes. Preserve whatever it already is —
+        // a genuine sign-out is handled separately below (SIGNED_OUT via
+        // onAuthStateChange), which does hard-clear it.
+        if (mounted) setState(s => ({ ...s, profile: null, loading: false, error: null }))
         return
       }
       // Retries cover the brief window after signup where the trigger-created
       // profile row may not yet be visible to this read.
       const profile = await fetchProfile(session.user.id, 3)
       if (mounted) {
-        setState({ profile, loading: false, error: profile ? null : 'Profile not found', recovery: false })
+        // Deliberately do NOT touch `recovery` here. This runs for every
+        // SIGNED_IN event, including the one Supabase's PKCE code exchange
+        // fires for a password-recovery link (it does not reliably emit
+        // PASSWORD_RECOVERY instead). Resolving a profile — even a real,
+        // valid one — must never by itself flip a recovery session into a
+        // normal one; only completeRecovery() (called after a successful
+        // updateUser({ password })) or an explicit sign-out may do that.
+        setState(s => ({ ...s, profile, loading: false, error: profile ? null : 'Profile not found' }))
       }
     }
 
@@ -117,8 +147,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return profile
   }, [])
 
+  // Synchronous by design — see the AuthContextValue doc comment. Must be
+  // callable before any async exchange/profile work even starts.
+  const beginRecovery = useCallback(() => {
+    setState(s => ({ ...s, recovery: true, loading: false }))
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ ...state, completeRecovery }}>
+    <AuthContext.Provider value={{ ...state, completeRecovery, beginRecovery }}>
       {children}
     </AuthContext.Provider>
   )
