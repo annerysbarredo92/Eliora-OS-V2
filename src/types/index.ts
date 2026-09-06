@@ -851,4 +851,201 @@ export interface AiPromptTemplate { id: string; agency_id: string; name: string;
 export interface AiSavedOutput { id: string; agency_id: string; client_id: string | null; generation_id: string | null; title: string; content: Record<string, unknown>; created_at: string }
 export type AutomationTrigger = 'date' | 'status' | 'manual'
 export interface Automation { id: string; agency_id: string; name: string; description: string | null; trigger_type: AutomationTrigger; trigger_config: Record<string, unknown>; action_type: string; action_config: Record<string, unknown>; is_active: boolean; created_at: string; updated_at: string }
+
+/* ── Digital Workspace (Wave 1) ────────────────────────────
+   Canonical operational record for the client's owned digital presence.
+   Not Business (who the client is) and not Marketing (what the agency
+   publishes/promotes) — see sql/wave-digital-workspace/wave-1-foundation
+   for the full architecture notes. */
+
+/** Shared across websites/social channels/tracking/etc. — see
+ * sql/wave-digital-workspace/wave-1-foundation/01-websites-domains.sql. */
+export type DigitalIntegrationStatus = 'manual' | 'configured' | 'connected' | 'syncing' | 'live' | 'error'
+export type DigitalOwnershipStatus   = 'owned' | 'shared_access' | 'no_access' | 'unknown'
+export type DigitalVerificationStatus = 'verified' | 'unverified' | 'pending' | 'not_applicable'
+
+export type WebsiteType   = 'primary_site' | 'ecommerce' | 'microsite' | 'landing_page' | 'secondary_brand' | 'other'
+export type WebsiteStatus = 'active' | 'inactive' | 'archived'
+
+export interface Website {
+  id: string
+  agency_id: string
+  client_id: string
+  name: string
+  url: string | null
+  website_type: WebsiteType
+  platform_cms: string | null
+  hosting_provider: string | null
+  status: WebsiteStatus
+  ownership_status: DigitalOwnershipStatus
+  integration_status: DigitalIntegrationStatus
+  is_primary: boolean
+  launch_date: string | null
+  notes: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type DomainStatus = 'active' | 'expired' | 'transferring' | 'archived'
+export type DomainSslStatus = 'valid' | 'invalid' | 'none' | 'unknown'
+
+export interface Domain {
+  id: string
+  agency_id: string
+  client_id: string
+  website_id: string | null
+  domain_name: string
+  registrar: string | null
+  dns_provider: string | null
+  registration_date: string | null
+  expiration_date: string | null
+  auto_renew: boolean
+  ssl_status: DomainSslStatus
+  ssl_expiration_date: string | null
+  status: DomainStatus
+  notes: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'linkedin' | 'youtube' | 'twitter_x' | 'pinterest' | 'threads' | 'other'
+
+export interface SocialChannel {
+  id: string
+  agency_id: string
+  client_id: string
+  platform: SocialPlatform
+  platform_other_label: string | null
+  handle: string | null
+  profile_url: string | null
+  external_account_id: string | null
+  account_type: string | null
+  ownership_status: DigitalOwnershipStatus
+  integration_status: DigitalIntegrationStatus
+  is_active: boolean
+  is_primary: boolean
+  metadata: Record<string, unknown>
+  notes: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SocialChannelSnapshot {
+  id: string
+  agency_id: string
+  client_id: string
+  social_channel_id: string
+  snapshot_date: string
+  followers: number | null
+  following: number | null
+  reach: number | null
+  impressions: number | null
+  engagements: number | null
+  engagement_rate: number | null
+  profile_views: number | null
+  link_clicks: number | null
+  posts_count: number | null
+  source: 'manual' | 'integration'
+  created_by: string | null
+  created_at: string
+}
+
+export type BusinessListingProvider = 'google_business_profile' | 'apple_business_connect' | 'bing_places' | 'yelp' | 'custom'
+export type ListingStatus = 'active' | 'inactive' | 'archived'
+
+export interface BusinessListing {
+  id: string
+  agency_id: string
+  client_id: string
+  provider: BusinessListingProvider
+  custom_provider_name: string | null
+  profile_url: string | null
+  external_listing_id: string | null
+  ownership_status: DigitalOwnershipStatus
+  verification_status: DigitalVerificationStatus
+  listing_status: ListingStatus
+  business_name: string | null
+  address: string | null
+  phone: string | null
+  hours: Record<string, unknown> | null
+  category: string | null
+  rating: number | null
+  review_count: number
+  last_review_at: string | null
+  notes: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SeoCheckStatus = 'unknown' | 'not_configured' | 'issue' | 'healthy'
+export interface SeoIssue { code: string; label: string; severity: 'low' | 'medium' | 'high' }
+
+export interface SeoProfile {
+  id: string
+  agency_id: string
+  client_id: string
+  website_id: string | null
+  indexing_status: SeoCheckStatus
+  sitemap_status: SeoCheckStatus
+  robots_status: SeoCheckStatus
+  search_console_status: DigitalIntegrationStatus
+  technical_health_status: SeoCheckStatus
+  keyword_baseline_count: number | null
+  visibility_baseline_score: number | null
+  issues: SeoIssue[]
+  recommendations: string | null
+  last_checked_at: string | null
+  notes: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type TrackingProvider = 'ga4' | 'gtm' | 'search_console' | 'meta_pixel' | 'google_ads' | 'tiktok_pixel' | 'linkedin_insight' | 'custom'
+
+export interface TrackingConfiguration {
+  id: string
+  agency_id: string
+  client_id: string
+  website_id: string | null
+  provider: TrackingProvider
+  custom_provider_name: string | null
+  external_id: string | null
+  status: DigitalIntegrationStatus
+  verification_status: DigitalVerificationStatus
+  last_checked_at: string | null
+  last_synced_at: string | null
+  configuration: Record<string, unknown>
+  notes: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type DigitalAssetCategory = 'favicon' | 'website_image' | 'app_icon' | 'social_profile_asset' | 'downloadable_resource' | 'technical_document' | 'platform_asset' | 'other'
+
+export interface DigitalAsset {
+  id: string
+  agency_id: string
+  client_id: string
+  client_asset_id: string
+  category: DigitalAssetCategory
+  website_id: string | null
+  domain_id: string | null
+  social_channel_id: string | null
+  business_listing_id: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
 export interface AutomationRun { id: string; agency_id: string; automation_id: string; status: 'success' | 'failed' | 'retrying'; attempt: number; error: string | null; created_at: string }

@@ -264,7 +264,7 @@ export function AgencyWorkspace() {
           {isActiveClient && resolvedTab === 'business'       && <BusinessTab      client={client} ctx={ctx} onChanged={refresh} onRequestAI={() => changeTab('ai')} />}
           {isActiveClient && resolvedTab === 'marketing'      && <MarketingTab     client={client} ctx={ctx} />}
           {isActiveClient && resolvedTab === 'creative'       && <CreativeTab      client={client} ctx={ctx} />}
-          {isActiveClient && resolvedTab === 'digital'        && <DigitalTab />}
+          {isActiveClient && resolvedTab === 'digital'        && <DigitalTab client={client} ctx={ctx} onChanged={refresh} onRequestAI={() => changeTab('ai')} />}
           {isActiveClient && resolvedTab === 'client_ops'     && <OpsTab           client={client} />}
           {isActiveClient && resolvedTab === 'client_success' && <ClientSuccessTab client={client} ctx={ctx} />}
           {isActiveClient && resolvedTab === 'insights'       && <InsightsTab      client={client} ctx={ctx} />}
