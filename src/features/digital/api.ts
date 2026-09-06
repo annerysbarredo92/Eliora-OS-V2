@@ -254,8 +254,14 @@ export interface WebsiteFormValues {
  * transaction serialized per-client so two concurrent "create the first
  * website" calls can't both think they're first. Never determine primary
  * status by counting rows on the frontend first.
+ *
+ * No actor id or status is passed — the RPC derives the actor from
+ * auth.uid() server-side (a caller-supplied actor id would let it be
+ * spoofed) and always creates as 'active' (the only initial status this
+ * product ever offers at creation time; editing to another status
+ * afterwards still goes through updateWebsite's normal UPDATE path).
  */
-export async function createWebsite(clientId: string, values: WebsiteFormValues, ctx: Ctx): Promise<Website> {
+export async function createWebsite(clientId: string, values: WebsiteFormValues, _ctx: Ctx): Promise<Website> {
   const { data, error } = await supabase.rpc('create_website_safe', {
     p_client_id: clientId,
     p_name: values.name.trim(),
@@ -263,11 +269,9 @@ export async function createWebsite(clientId: string, values: WebsiteFormValues,
     p_website_type: values.website_type,
     p_platform_cms: values.platform_cms.trim() || null,
     p_hosting_provider: values.hosting_provider.trim() || null,
-    p_status: values.status,
     p_ownership_status: values.ownership_status,
     p_launch_date: values.launch_date || null,
     p_notes: values.notes.trim() || null,
-    p_actor_id: ctx.actorId,
   })
   if (error) { console.error('createWebsite:', error.message); throw new Error(parseDigitalMutationError(error.message)) }
   return data as Website
