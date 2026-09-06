@@ -3,7 +3,7 @@ import type {
   Website, Domain, SocialChannel, SocialChannelSnapshot,
   BusinessListing, SeoProfile, TrackingConfiguration, DigitalAsset,
   WebsiteType, WebsiteStatus, DomainStatus, DomainSslStatus,
-  BusinessListingProvider, ListingStatus,
+  BusinessListingProvider, ListingStatus, SocialPlatform,
   DigitalOwnershipStatus, DigitalIntegrationStatus, DigitalVerificationStatus,
 } from '@/types'
 
@@ -101,6 +101,11 @@ export function parseDigitalMutationError(msg: string): string {
   if (msg.includes('domains_client_name_idx')) return 'This domain is already on file for this client.'
   if (msg.includes('business_listings_external_id_unique_idx')) return 'A listing with this exact provider and external ID already exists for this client.'
   if (msg.includes('tracking_configurations_external_id_unique_idx')) return 'A tracking configuration with this exact provider and ID already exists for this client.'
+  if (msg.includes('social_channels_client_handle_idx')) return 'A channel with this exact handle already exists for this client on this platform.'
+  if (msg.includes('social_channels_external_id_unique_idx')) return 'A channel with this exact platform account ID already exists for this client.'
+  if (msg.includes('social_channels_other_label_required')) return 'Enter a label for this platform.'
+  if (msg.includes('social_channel_not_found')) return 'That social channel could not be found or you do not have access.'
+  if (msg.includes('social_channel_tenant_mismatch')) return 'That social channel does not belong to this client.'
   if (msg.includes('website_tenant_mismatch') || msg.includes('website_mismatch')) return 'That website does not belong to this client.'
   if (msg.includes('website_not_found')) return 'That website could not be found or you do not have access.'
   if (msg.includes('client_not_found')) return 'Client not found or access denied.'
@@ -220,6 +225,18 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   archived: 'Archived',
 }
 
+export const SOCIAL_PLATFORM_LABELS: Record<SocialPlatform, string> = {
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  tiktok: 'TikTok',
+  linkedin: 'LinkedIn',
+  youtube: 'YouTube',
+  twitter_x: 'X',
+  pinterest: 'Pinterest',
+  threads: 'Threads',
+  other: 'Other',
+}
+
 function optionsFromLabels<T extends string>(labels: Record<T, string>): { value: T; label: string }[] {
   return (Object.keys(labels) as T[]).map(value => ({ value, label: labels[value] }))
 }
@@ -231,6 +248,8 @@ export const SSL_STATUS_OPTIONS = optionsFromLabels(SSL_STATUS_LABELS)
 export const LISTING_PROVIDER_OPTIONS = optionsFromLabels(LISTING_PROVIDER_LABELS)
 export const VERIFICATION_STATUS_OPTIONS = optionsFromLabels(VERIFICATION_STATUS_LABELS)
 export const LISTING_STATUS_OPTIONS = optionsFromLabels(LISTING_STATUS_LABELS)
+export const SOCIAL_PLATFORM_OPTIONS = optionsFromLabels(SOCIAL_PLATFORM_LABELS)
+export const INTEGRATION_STATUS_OPTIONS = optionsFromLabels(INTEGRATION_STATUS_LABELS)
 
 /* ── WEBSITES: create / update / archive ──────────────────── */
 
@@ -449,4 +468,187 @@ export async function archiveBusinessListing(listing: BusinessListing, ctx: Ctx)
     updated_by: ctx.actorId,
   }).eq('id', listing.id)
   if (error) { console.error('archiveBusinessListing:', error.message); throw new Error(error.message) }
+}
+
+/* ── SOCIAL CHANNELS: create / update / deactivate ─────────
+   No separate "account/profile name" column exists on the deployed
+   schema — `handle` is the one identity text field, used flexibly for an
+   @handle (Instagram/TikTok/X) or a page/channel name (LinkedIn/Facebook/
+   YouTube, where "handle" isn't really the right word but there is no
+   dedicated column for it). Not inventing a column Wave 1 doesn't have. */
+
+export interface SocialChannelFormValues {
+  platform: SocialPlatform
+  platform_other_label: string
+  handle: string
+  profile_url: string
+  external_account_id: string
+  account_type: string
+  ownership_status: DigitalOwnershipStatus
+  integration_status: DigitalIntegrationStatus
+  is_active: boolean
+  notes: string
+}
+
+function socialChannelPayload(values: SocialChannelFormValues) {
+  if (values.platform === 'other' && !values.platform_other_label.trim()) {
+    throw new Error('Enter a label for this platform.')
+  }
+  return {
+    platform: values.platform,
+    platform_other_label: values.platform === 'other' ? values.platform_other_label.trim() : null,
+    handle: values.handle.trim() || null,
+    profile_url: values.profile_url.trim() ? normalizeUrl(values.profile_url) : null,
+    external_account_id: values.external_account_id.trim() || null,
+    account_type: values.account_type.trim() || null,
+    ownership_status: values.ownership_status,
+    integration_status: values.integration_status,
+    is_active: values.is_active,
+    notes: values.notes.trim() || null,
+  }
+}
+
+export async function createSocialChannel(clientId: string, values: SocialChannelFormValues, ctx: Ctx): Promise<SocialChannel> {
+  const payload = socialChannelPayload(values)
+  const { data, error } = await supabase.from('social_channels').insert({
+    ...payload,
+    agency_id: ctx.agencyId,
+    client_id: clientId,
+    created_by: ctx.actorId,
+    updated_by: ctx.actorId,
+  }).select().single()
+  if (error) { console.error('createSocialChannel:', error.message); throw new Error(parseDigitalMutationError(error.message)) }
+  return data as SocialChannel
+}
+
+export async function updateSocialChannel(id: string, values: SocialChannelFormValues, ctx: Ctx): Promise<void> {
+  const payload = socialChannelPayload(values)
+  const { error } = await supabase.from('social_channels').update({
+    ...payload,
+    updated_by: ctx.actorId,
+  }).eq('id', id)
+  if (error) { console.error('updateSocialChannel:', error.message); throw new Error(parseDigitalMutationError(error.message)) }
+}
+
+/**
+ * Deactivate, not delete — social_channels has no separate archived
+ * lifecycle status, only is_active. Historical snapshots (FK'd to this
+ * channel's id) are completely unaffected: deactivating a channel never
+ * touches social_channel_snapshots, so tracker history survives.
+ */
+export async function deactivateSocialChannel(channel: SocialChannel, ctx: Ctx): Promise<void> {
+  const { error } = await supabase.from('social_channels').update({
+    is_active: false,
+    updated_by: ctx.actorId,
+  }).eq('id', channel.id)
+  if (error) { console.error('deactivateSocialChannel:', error.message); throw new Error(error.message) }
+}
+
+export async function reactivateSocialChannel(channel: SocialChannel, ctx: Ctx): Promise<void> {
+  const { error } = await supabase.from('social_channels').update({
+    is_active: true,
+    updated_by: ctx.actorId,
+  }).eq('id', channel.id)
+  if (error) { console.error('reactivateSocialChannel:', error.message); throw new Error(error.message) }
+}
+
+/* ── SOCIAL TRACKER: snapshots ─────────────────────────────
+   Only the metrics actually present on social_channel_snapshots are
+   exposed — nothing invented here that the schema can't persist. */
+
+export async function listSnapshotsByChannel(channelId: string, limit = 400): Promise<SocialChannelSnapshot[]> {
+  const { data, error } = await supabase
+    .from('social_channel_snapshots').select('*').eq('social_channel_id', channelId)
+    .order('snapshot_date', { ascending: false }).limit(limit)
+  if (error) { console.error('listSnapshotsByChannel:', error.message); throw new Error(error.message) }
+  return (data ?? []) as SocialChannelSnapshot[]
+}
+
+export interface SnapshotFormValues {
+  snapshot_date: string
+  followers: string
+  following: string
+  reach: string
+  impressions: string
+  engagements: string
+  engagement_rate: string
+  profile_views: string
+  link_clicks: string
+  posts_count: string
+}
+
+// Every numeric field is a string in the form; parsed strictly here rather
+// than silently coerced — a non-numeric, negative, or non-integer entry
+// throws instead of being rounded/clamped away. An empty field means
+// "unrecorded" (stored as NULL) and is never conflated with an explicit 0.
+function parseNonNegInt(value: string, label: string): number | null {
+  const t = value.trim()
+  if (!t) return null
+  const n = Number(t)
+  if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+    throw new Error(`${label} must be a whole number, zero or greater.`)
+  }
+  return n
+}
+
+function parseNonNegDecimal(value: string, label: string): number | null {
+  const t = value.trim()
+  if (!t) return null
+  const n = Number(t)
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error(`${label} must be zero or greater.`)
+  }
+  return n
+}
+
+/**
+ * Upserts atomically on (social_channel_id, snapshot_date) — the Wave 1
+ * unique constraint (social_channel_snapshots_unique_per_day). A genuine
+ * `INSERT ... ON CONFLICT DO UPDATE` at the database level, not a
+ * frontend read-then-write — re-entering metrics for a date that already
+ * has a snapshot corrects that row instead of creating a duplicate or
+ * surfacing a raw unique-violation error. RLS's existing INSERT/UPDATE
+ * policies apply to their respective branch of the upsert, and the
+ * deployed tenant-match trigger (check_social_channel_tenant_match) still
+ * validates social_channel_id on every write this performs — no RPC
+ * needed for this to be safe (audited explicitly; see the Wave 3 SQL
+ * file's header for why one wasn't added).
+ */
+export async function upsertSocialChannelSnapshot(
+  channel: SocialChannel,
+  values: SnapshotFormValues,
+  ctx: Ctx,
+): Promise<SocialChannelSnapshot> {
+  if (!values.snapshot_date) throw new Error('Snapshot date is required.')
+  const payload = {
+    agency_id: channel.agency_id,
+    client_id: channel.client_id,
+    social_channel_id: channel.id,
+    snapshot_date: values.snapshot_date,
+    followers: parseNonNegInt(values.followers, 'Followers'),
+    following: parseNonNegInt(values.following, 'Following'),
+    reach: parseNonNegInt(values.reach, 'Reach'),
+    impressions: parseNonNegInt(values.impressions, 'Impressions'),
+    engagements: parseNonNegInt(values.engagements, 'Engagements'),
+    engagement_rate: parseNonNegDecimal(values.engagement_rate, 'Engagement rate'),
+    profile_views: parseNonNegInt(values.profile_views, 'Profile views'),
+    link_clicks: parseNonNegInt(values.link_clicks, 'Link clicks'),
+    posts_count: parseNonNegInt(values.posts_count, 'Posts count'),
+    source: 'manual' as const,
+    created_by: ctx.actorId,
+  }
+  const { data, error } = await supabase
+    .from('social_channel_snapshots')
+    .upsert(payload, { onConflict: 'social_channel_id,snapshot_date' })
+    .select()
+    .single()
+  if (error) { console.error('upsertSocialChannelSnapshot:', error.message); throw new Error(parseDigitalMutationError(error.message)) }
+  return data as SocialChannelSnapshot
+}
+
+/** For correcting a mistaken entry entirely — RLS (admin-only) is the
+ * real gate; this is a plain delete, snapshots have no archive concept. */
+export async function deleteSocialChannelSnapshot(snapshotId: string): Promise<void> {
+  const { error } = await supabase.from('social_channel_snapshots').delete().eq('id', snapshotId)
+  if (error) { console.error('deleteSocialChannelSnapshot:', error.message); throw new Error(error.message) }
 }

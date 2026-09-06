@@ -4,6 +4,8 @@ import { DigitalOverview } from './DigitalOverview'
 import { WebsiteSection } from './WebsiteSection'
 import { DomainsSection } from './DomainsSection'
 import { BusinessListingsSection } from './BusinessListingsSection'
+import { SocialChannelsSection } from './SocialChannelsSection'
+import { SocialTrackerSection } from './SocialTrackerSection'
 import { DigitalSidebar, DIGITAL_ICONS } from './DigitalSidebar'
 import { DigitalSectionPlaceholder } from './DigitalSectionPlaceholder'
 import { DigitalErrorBoundary } from './DigitalErrorBoundary'
@@ -13,7 +15,7 @@ import {
   DIGITAL_SECTIONS, resolveDigitalSectionId,
   type DigitalSectionId, type DigitalSectionDef,
 } from './sections'
-import type { Client } from '@/types'
+import type { Client, SocialChannel } from '@/types'
 
 interface Props {
   client: Client
@@ -40,11 +42,29 @@ export function DigitalShell({ client, ctx, onChanged }: Props) {
       prev => {
         const next = new URLSearchParams(prev)
         next.set('dsection', id)
+        next.delete('dchannel')
         return next
       },
       { replace: true },
     )
   }
+
+  // "View Tracker" on a Social Channels card jumps straight to Social
+  // Tracker with that channel pre-selected, via the same URL-param
+  // mechanism as section switching — no separate routing system.
+  function viewChannelTracker(channel: SocialChannel) {
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev)
+        next.set('dsection', 'social-tracker')
+        next.set('dchannel', channel.id)
+        return next
+      },
+      { replace: true },
+    )
+  }
+
+  const initialChannelId = searchParams.get('dchannel') ?? undefined
 
   const activeSection = DIGITAL_SECTIONS.find(s => s.id === section)!
 
@@ -91,6 +111,8 @@ export function DigitalShell({ client, ctx, onChanged }: Props) {
                 onChanged={onChanged}
                 onSectionChange={changeSection}
                 onCompletionLoaded={setCompletion}
+                onViewChannelTracker={viewChannelTracker}
+                initialChannelId={initialChannelId}
               />
             </div>
           </DigitalErrorBoundary>
@@ -108,7 +130,7 @@ export function DigitalShell({ client, ctx, onChanged }: Props) {
 /* ── Section renderer ────────────────────────────────────── */
 
 function SectionRenderer({
-  section, client, ctx, onChanged, onSectionChange, onCompletionLoaded,
+  section, client, ctx, onChanged, onSectionChange, onCompletionLoaded, onViewChannelTracker, initialChannelId,
 }: {
   section: DigitalSectionId
   client: Client
@@ -116,6 +138,8 @@ function SectionRenderer({
   onChanged: () => void
   onSectionChange: (id: string) => void
   onCompletionLoaded: (c: Record<DigitalSectionId, CompletionStatus>) => void
+  onViewChannelTracker: (channel: SocialChannel) => void
+  initialChannelId?: string
 }) {
   const def = DIGITAL_SECTIONS.find(s => s.id === section)!
 
@@ -132,6 +156,10 @@ function SectionRenderer({
       return <WebsiteSection client={client} ctx={ctx} onChanged={onChanged} />
     case 'domains':
       return <DomainsSection client={client} ctx={ctx} onChanged={onChanged} />
+    case 'social-channels':
+      return <SocialChannelsSection client={client} ctx={ctx} onChanged={onChanged} onViewTracker={onViewChannelTracker} />
+    case 'social-tracker':
+      return <SocialTrackerSection client={client} ctx={ctx} onChanged={onChanged} onGoToChannels={() => onSectionChange('social-channels')} initialChannelId={initialChannelId} />
     case 'business-listings':
       return <BusinessListingsSection client={client} ctx={ctx} onChanged={onChanged} />
     default:

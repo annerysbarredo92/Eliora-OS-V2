@@ -339,8 +339,17 @@ function buildAttentionItems(args: {
   const sslIssue = args.activeDomains.filter(d => d.ssl_status === 'invalid' || d.ssl_status === 'none')
   if (sslIssue.length > 0) items.push({ label: `${pluralize(sslIssue.length, 'domain is', 'domains are')} missing valid SSL`, sectionId: 'domains' })
 
-  const noAccessSocial = args.socialChannels.filter(c => c.is_active && c.ownership_status === 'no_access')
+  const activeSocial = args.socialChannels.filter(c => c.is_active)
+  const noAccessSocial = activeSocial.filter(c => c.ownership_status === 'no_access')
   if (noAccessSocial.length > 0) items.push({ label: `${pluralize(noAccessSocial.length, 'social account is', 'social accounts are')} missing access`, sectionId: 'social-channels' })
+
+  const noProfileUrlSocial = activeSocial.filter(c => !c.profile_url)
+  if (noProfileUrlSocial.length > 0) items.push({ label: `${pluralize(noProfileUrlSocial.length, 'social channel has', 'social channels have')} no profile URL`, sectionId: 'social-channels' })
+
+  // MANUAL and UNKNOWN are valid, expected Wave 3 states — only a genuine
+  // connection error is worth surfacing here.
+  const errorSocial = activeSocial.filter(c => c.integration_status === 'error')
+  if (errorSocial.length > 0) items.push({ label: `${pluralize(errorSocial.length, 'social channel has', 'social channels have')} a connection error`, sectionId: 'social-channels' })
 
   const activeListings = args.businessListings.filter(l => l.listing_status !== 'archived')
   if (activeListings.length === 0) {

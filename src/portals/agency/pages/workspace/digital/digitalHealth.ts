@@ -100,20 +100,32 @@ function domainDimension(domains: SourceResult<Domain[]>): DigitalDimension {
 }
 
 /* ── Social Presence ───────────────────────────────────────
-   complete: 2+ active social channels documented.
-   partial:  1 active channel.
-   empty:    none. */
+   Infrastructure readiness, not popularity or raw channel count (Wave 3
+   locked decision — see requirement 26). A client with 5 well-documented
+   channels and a client with 1 well-documented channel both read
+   'complete'; a client with 5 channels missing profile URLs reads the
+   same 'partial' as a client with 1 channel missing its profile URL.
+   complete: every active channel has known ownership, a profile URL, and
+             is not in an error connection state.
+   partial:  active channels exist, but at least one is missing a
+             readiness signal.
+   empty:    no active channels at all. */
 function socialDimension(channels: SourceResult<SocialChannel[]>): DigitalDimension {
   if (channels.status === 'rejected') {
     return { id: 'social-channels', label: 'Social Channels', status: 'unknown', sectionId: 'social-channels', tip: 'Could not load social data' }
   }
-  const activeCount = (channels.value ?? []).filter(c => c.is_active).length
+  const active = (channels.value ?? []).filter(c => c.is_active)
+  if (active.length === 0) {
+    return { id: 'social-channels', label: 'Social Channels', status: 'empty', sectionId: 'social-channels', tip: 'No social accounts on file' }
+  }
+  const ready = active.filter(c => c.ownership_status !== 'unknown' && !!c.profile_url && c.integration_status !== 'error')
+  const allReady = ready.length === active.length
   return {
     id: 'social-channels',
     label: 'Social Channels',
-    status: activeCount >= 2 ? 'complete' : activeCount === 1 ? 'partial' : 'empty',
+    status: allReady ? 'complete' : 'partial',
     sectionId: 'social-channels',
-    tip: activeCount === 0 ? 'No social accounts on file' : null,
+    tip: allReady ? null : `${active.length - ready.length} of ${active.length} need attention`,
   }
 }
 
