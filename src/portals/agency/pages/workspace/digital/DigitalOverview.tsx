@@ -6,6 +6,7 @@ import {
 import { computeDigitalHealth, DIGITAL_HEALTH_BAND_LABEL, fromSettled } from './digitalHealth'
 import type { DigitalHealthResult } from './digitalHealth'
 import { computeDigitalCompletion } from './digitalCompletion'
+import { domainExpirationState } from './domainExpiration'
 import { DIGITAL_ICONS } from './DigitalSidebar'
 import { KpiCard } from '@/components/ui/KpiCard'
 import type { DigitalSectionId } from './sections'
@@ -33,6 +34,10 @@ export function DigitalOverview({ clientId, onSectionChange, onCompletionLoaded 
   const [seoProfile, setSeoProfile] = useState<SeoProfile | null>(null)
   const [trackingConfigs, setTrackingConfigs] = useState<TrackingConfiguration[]>([])
   const [digitalAssets, setDigitalAssets] = useState<DigitalAsset[]>([])
+  // Tracked separately from `seoProfile` (which stays null on a genuine
+  // fetch failure too) so the KpiCard can tell "never assessed" apart from
+  // "could not check right now" — see the SEO wording requirement.
+  const [seoUnavailable, setSeoUnavailable] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -65,6 +70,7 @@ export function DigitalOverview({ clientId, onSectionChange, onCompletionLoaded 
       if (socialR.status === 'fulfilled') setSocialChannels(socialR.value)
       if (listingsR.status === 'fulfilled') setBusinessListings(listingsR.value)
       if (seoR.status === 'fulfilled') setSeoProfile(seoR.value)
+      else setSeoUnavailable(true)
       if (trackingR.status === 'fulfilled') setTrackingConfigs(trackingR.value)
       if (assetsR.status === 'fulfilled') setDigitalAssets(assetsR.value)
 
@@ -108,10 +114,14 @@ export function DigitalOverview({ clientId, onSectionChange, onCompletionLoaded 
   const activeSocialCount = socialChannels.filter(c => c.is_active).length
   const verifiedListingCount = businessListings.filter(l => l.verification_status === 'verified').length
   const liveTrackingCount = trackingConfigs.filter(c => c.status === 'connected' || c.status === 'syncing' || c.status === 'live').length
-  const expiringDomains = domains.filter(d => d.status === 'active' && d.expiration_date && daysUntil(d.expiration_date) <= 30)
+  const activeDomains = domains.filter(d => d.status !== 'archived')
+  const expiringDomains = activeDomains.filter(d => {
+    const state = domainExpirationState(d)
+    return state === 'expired' || state === 'expiring_soon'
+  })
 
   const attentionItems = buildAttentionItems({
-    health, primaryWebsite, expiringDomains, socialChannels, businessListings, trackingConfigs, seoProfile,
+    primaryWebsite, websites, activeDomains, socialChannels, businessListings, trackingConfigs, seoProfile, seoUnavailable,
   })
 
   return (
@@ -129,8 +139,8 @@ export function DigitalOverview({ clientId, onSectionChange, onCompletionLoaded 
         />
         <KpiCard
           label="Domains"
-          value={domains.filter(d => d.status !== 'archived').length}
-          hint={expiringDomains.length > 0 ? `${expiringDomains.length} expiring soon` : undefined}
+          value={activeDomains.length}
+          hint={expiringDomains.length > 0 ? `${expiringDomains.length} need attention` : undefined}
           accent={expiringDomains.length > 0 ? 'gold' : 'violet'}
         />
         <KpiCard
@@ -157,7 +167,7 @@ export function DigitalOverview({ clientId, onSectionChange, onCompletionLoaded 
         />
         <KpiCard
           label="SEO Status"
-          value={seoStatusLabel(seoProfile)}
+          value={seoStatusLabel(seoProfile, seoUnavailable)}
           accent="muted"
         />
         <KpiCard
@@ -244,7 +254,7 @@ function DigitalHealthCard({ health, onSectionChange }: { health: DigitalHealthR
                 <span style={{ fontSize: 11.5, fontWeight: 600 }}>{dim.label}</span>
               </div>
               <span style={{ fontSize: 12, color: dimStatusColor(dim.status), fontWeight: 600 }}>
-                {dimStatusLabel(dim.status)}
+                {dim.statusLabel ?? dimStatusLabel(dim.status)}
               </span>
               {dim.tip && <span style={{ fontSize: 11, color: 'var(--muted)' }}>{dim.tip}</span>}
             </button>
@@ -285,11 +295,11 @@ function SummarySection({ title, children }: { title: string; children: React.Re
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
-function daysUntil(dateStr: string): number {
-  return Math.floor((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-}
-
-function seoStatusLabel(profile: SeoProfile | null): string {
+// QUERY SUCCEEDED + no profile/assessment yet → "Not assessed".
+// QUERY FAILED → "Unavailable". These must never be the same word — see
+// seoDimension() in digitalHealth.ts for the matching health-card fix.
+function seoStatusLabel(profile: SeoProfile | null, unavailable: boolean): string {
+  if (unavailable) return 'Unavailable'
   if (!profile || profile.technical_health_status === 'unknown') return 'Not assessed'
   if (profile.technical_health_status === 'healthy') return 'Healthy'
   if (profile.technical_health_status === 'issue') return 'Needs review'
@@ -298,33 +308,72 @@ function seoStatusLabel(profile: SeoProfile | null): string {
 
 interface AttentionItem { label: string; sectionId: string }
 
+// Every condition here is either a real, known state (not a guess from
+// missing data) or an explicit aggregate count — "5 domains expire within
+// 30 days" rather than five separate lines. UNKNOWN values are never
+// treated as a problem; only genuinely known bad states raise an alert.
 function buildAttentionItems(args: {
-  health: DigitalHealthResult | null
   primaryWebsite: Website | undefined
-  expiringDomains: Domain[]
+  websites: Website[]
+  activeDomains: Domain[]
   socialChannels: SocialChannel[]
   businessListings: BusinessListing[]
   trackingConfigs: TrackingConfiguration[]
   seoProfile: SeoProfile | null
+  seoUnavailable: boolean
 }): AttentionItem[] {
   const items: AttentionItem[] = []
 
   if (!args.primaryWebsite) items.push({ label: 'No primary website set', sectionId: 'website' })
-  for (const d of args.expiringDomains) {
-    items.push({ label: `Domain ${d.domain_name} expires within 30 days`, sectionId: 'domains' })
-  }
-  const noAccessSocial = args.socialChannels.filter(c => c.ownership_status === 'no_access')
-  if (noAccessSocial.length > 0) items.push({ label: `${noAccessSocial.length} social account(s) missing access`, sectionId: 'social-channels' })
 
-  if (args.businessListings.length === 0) items.push({ label: 'No business listings on file', sectionId: 'business-listings' })
-  const unverified = args.businessListings.filter(l => l.verification_status === 'unverified')
-  if (unverified.length > 0) items.push({ label: `${unverified.length} listing(s) unverified`, sectionId: 'business-listings' })
+  const noAccessWebsites = args.websites.filter(w => w.status !== 'archived' && w.ownership_status === 'no_access')
+  if (noAccessWebsites.length > 0) {
+    items.push({ label: pluralize(noAccessWebsites.length, 'website has', 'websites have') + ' no ownership/access on file', sectionId: 'website' })
+  }
+
+  const expired = args.activeDomains.filter(d => domainExpirationState(d) === 'expired')
+  const expiringSoon = args.activeDomains.filter(d => domainExpirationState(d) === 'expiring_soon')
+  if (expired.length > 0) items.push({ label: `${pluralize(expired.length, 'domain has', 'domains have')} expired`, sectionId: 'domains' })
+  if (expiringSoon.length > 0) items.push({ label: `${pluralize(expiringSoon.length, 'domain expires', 'domains expire')} within 30 days`, sectionId: 'domains' })
+
+  const sslIssue = args.activeDomains.filter(d => d.ssl_status === 'invalid' || d.ssl_status === 'none')
+  if (sslIssue.length > 0) items.push({ label: `${pluralize(sslIssue.length, 'domain is', 'domains are')} missing valid SSL`, sectionId: 'domains' })
+
+  const noAccessSocial = args.socialChannels.filter(c => c.is_active && c.ownership_status === 'no_access')
+  if (noAccessSocial.length > 0) items.push({ label: `${pluralize(noAccessSocial.length, 'social account is', 'social accounts are')} missing access`, sectionId: 'social-channels' })
+
+  const activeListings = args.businessListings.filter(l => l.listing_status !== 'archived')
+  if (activeListings.length === 0) {
+    items.push({ label: 'No business listings on file', sectionId: 'business-listings' })
+  } else {
+    const unverified = activeListings.filter(l => l.verification_status === 'unverified')
+    if (unverified.length > 0) items.push({ label: `${pluralize(unverified.length, 'listing is', 'listings are')} unverified`, sectionId: 'business-listings' })
+
+    const noAccessListings = activeListings.filter(l => l.ownership_status === 'no_access')
+    if (noAccessListings.length > 0) items.push({ label: `${pluralize(noAccessListings.length, 'listing has', 'listings have')} no ownership/access on file`, sectionId: 'business-listings' })
+
+    const inactiveListings = activeListings.filter(l => l.listing_status === 'inactive')
+    if (inactiveListings.length > 0) items.push({ label: `${pluralize(inactiveListings.length, 'listing is', 'listings are')} inactive`, sectionId: 'business-listings' })
+
+    const missingUrl = activeListings.filter(l => !l.profile_url)
+    if (missingUrl.length > 0) items.push({ label: `${pluralize(missingUrl.length, 'listing is', 'listings are')} missing a profile URL`, sectionId: 'business-listings' })
+  }
 
   if (args.trackingConfigs.length === 0) items.push({ label: 'No analytics or tracking configured', sectionId: 'tracking-analytics' })
 
-  if (!args.seoProfile) items.push({ label: 'SEO has not been assessed yet', sectionId: 'seo' })
+  // SEO: only raise an alert for the two KNOWN states — never assessed yet,
+  // or genuinely unreachable. Neither is a guess.
+  if (args.seoUnavailable) {
+    items.push({ label: 'SEO status could not be checked', sectionId: 'seo' })
+  } else if (!args.seoProfile) {
+    items.push({ label: 'SEO has not been assessed yet', sectionId: 'seo' })
+  }
 
   return items
+}
+
+function pluralize(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`
 }
 
 function OverviewSkeleton() {

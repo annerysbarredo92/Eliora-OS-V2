@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { DigitalOverview } from './DigitalOverview'
+import { WebsiteSection } from './WebsiteSection'
+import { DomainsSection } from './DomainsSection'
+import { BusinessListingsSection } from './BusinessListingsSection'
 import { DigitalSidebar, DIGITAL_ICONS } from './DigitalSidebar'
 import { DigitalSectionPlaceholder } from './DigitalSectionPlaceholder'
 import { DigitalErrorBoundary } from './DigitalErrorBoundary'
@@ -25,7 +28,7 @@ const EMPTY_COMPLETION: Record<DigitalSectionId, CompletionStatus> = {
   seo: 'unknown', 'tracking-analytics': 'unknown', 'digital-assets': 'unknown',
 }
 
-export function DigitalShell({ client }: Props) {
+export function DigitalShell({ client, ctx, onChanged }: Props) {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawSection = searchParams.get('dsection')
   const section = resolveDigitalSectionId(rawSection)
@@ -83,7 +86,9 @@ export function DigitalShell({ client }: Props) {
             <div key={section} className="animate-fade-in business-content-padded">
               <SectionRenderer
                 section={section}
-                clientId={client.id}
+                client={client}
+                ctx={ctx}
+                onChanged={onChanged}
                 onSectionChange={changeSection}
                 onCompletionLoaded={setCompletion}
               />
@@ -103,26 +108,35 @@ export function DigitalShell({ client }: Props) {
 /* ── Section renderer ────────────────────────────────────── */
 
 function SectionRenderer({
-  section, clientId, onSectionChange, onCompletionLoaded,
+  section, client, ctx, onChanged, onSectionChange, onCompletionLoaded,
 }: {
   section: DigitalSectionId
-  clientId: string
+  client: Client
+  ctx: { agencyId: string; actorId: string }
+  onChanged: () => void
   onSectionChange: (id: string) => void
   onCompletionLoaded: (c: Record<DigitalSectionId, CompletionStatus>) => void
 }) {
   const def = DIGITAL_SECTIONS.find(s => s.id === section)!
 
-  if (section === 'overview') {
-    return (
-      <DigitalOverview
-        clientId={clientId}
-        onSectionChange={onSectionChange}
-        onCompletionLoaded={onCompletionLoaded}
-      />
-    )
+  switch (section) {
+    case 'overview':
+      return (
+        <DigitalOverview
+          clientId={client.id}
+          onSectionChange={onSectionChange}
+          onCompletionLoaded={onCompletionLoaded}
+        />
+      )
+    case 'website':
+      return <WebsiteSection client={client} ctx={ctx} onChanged={onChanged} />
+    case 'domains':
+      return <DomainsSection client={client} ctx={ctx} onChanged={onChanged} />
+    case 'business-listings':
+      return <BusinessListingsSection client={client} ctx={ctx} onChanged={onChanged} />
+    default:
+      return <DigitalSectionPlaceholder section={def} onBack={() => onSectionChange('overview')} />
   }
-
-  return <DigitalSectionPlaceholder section={def} onBack={() => onSectionChange('overview')} />
 }
 
 /* ── Mobile bottom navigation ────────────────────────────── */

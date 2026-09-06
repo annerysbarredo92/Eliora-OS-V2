@@ -18,6 +18,15 @@ export interface DigitalDimension {
   status: DigitalDimensionStatus
   sectionId: DigitalSectionId
   tip: string | null
+  /**
+   * Overrides the generic word shown for `status` (see dimStatusLabel in
+   * DigitalOverview.tsx) when it would be misleading. Needed specifically
+   * because 'unknown' covers two different real conditions — a failed
+   * fetch ("Unavailable") and a successful query with nothing to assess
+   * yet ("Not assessed") — that must never share the same displayed word
+   * even though they share the same status value (see seoDimension below).
+   */
+  statusLabel?: string
 }
 
 export type DigitalHealthBand = 'unknown' | 'not_started' | 'attention' | 'developing' | 'strong'
@@ -139,11 +148,16 @@ function listingDimension(listings: SourceResult<BusinessListing[]>): DigitalDim
      - a row exists with real signals → complete/partial by those signals. */
 function seoDimension(profile: SourceResult<SeoProfile | null>): DigitalDimension {
   if (profile.status === 'rejected') {
-    return { id: 'seo', label: 'SEO', status: 'unknown', sectionId: 'seo', tip: 'Could not load SEO data' }
+    // Query FAILED — this is the one case that should ever read "Unavailable".
+    return { id: 'seo', label: 'SEO', status: 'unknown', sectionId: 'seo', tip: 'Could not load SEO data', statusLabel: 'Unavailable' }
   }
   const p = profile.value
   if (!p || p.technical_health_status === 'unknown') {
-    return { id: 'seo', label: 'SEO', status: 'unknown', sectionId: 'seo', tip: 'Not yet assessed' }
+    // Query SUCCEEDED, there is just no assessment yet — this must read
+    // "Not assessed", never "Unavailable" (that word is reserved for the
+    // rejected branch above). No separate tip needed: the status word
+    // itself already says everything there is to say here.
+    return { id: 'seo', label: 'SEO', status: 'unknown', sectionId: 'seo', tip: null, statusLabel: 'Not assessed' }
   }
   if (p.technical_health_status === 'healthy') {
     return { id: 'seo', label: 'SEO', status: 'complete', sectionId: 'seo', tip: null }
