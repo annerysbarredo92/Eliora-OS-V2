@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { supabase } from '@/lib/supabase'
 import { fetchProfile } from '@/lib/auth'
 import { hasRecoveryPending, clearRecoveryPending } from '@/lib/recoveryIntent'
-import { logLifecycle } from '@/lib/lifecycleDebug' // TEMPORARY — see lifecycleDebug.ts
 import type { UserProfile } from '@/types'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
@@ -99,14 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef<AuthState>(state)
   useEffect(() => { stateRef.current = state }, [state])
 
-  // TEMPORARY — logs every loading transition, which is the exact signal
-  // RequireAuth/RequireAgency/RequireClient act on to swap in <AppLoader/>.
   useEffect(() => {
-    logLifecycle('AuthProvider state', { loading: state.loading, recovery: state.recovery, hasProfile: !!state.profile, profileId: state.profile?.id })
-  }, [state.loading, state.recovery, state.profile])
-
-  useEffect(() => {
-    logLifecycle('AuthProvider MOUNT')
     let mounted = true
 
     async function loadFromSession(session: Session | null) {
@@ -145,7 +137,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // React to later auth changes (login, signup, logout, recovery).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      logLifecycle('Auth event received', { event, hasSession: !!session, sessionUserId: session?.user?.id })
       if (event === 'INITIAL_SESSION') return            // handled by getSession() above
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') return // keep current profile/recovery as-is
 
@@ -182,10 +173,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const prior = stateRef.current
       const isSameUserReaffirmation =
         !prior.loading && !!prior.profile && prior.profile.id === session.user.id
-      logLifecycle('Auth SIGNED_IN decision', {
-        sameUserReaffirmation: isSameUserReaffirmation,
-        priorLoading: prior.loading, priorProfileId: prior.profile?.id, sessionUserId: session.user.id,
-      })
       if (isSameUserReaffirmation) {
         // The authenticated tree stays mounted exactly as it is. A
         // genuinely new sign-in — no profile loaded yet, or a different
@@ -203,7 +190,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     return () => {
-      logLifecycle('AuthProvider UNMOUNT')
       mounted = false
       subscription.unsubscribe()
     }

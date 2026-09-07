@@ -1,19 +1,8 @@
-import { useEffect } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { AgencySidebar } from '@/portals/agency/layouts/AgencySidebar'
 import { AgencyHeader }  from '@/portals/agency/layouts/AgencyHeader'
-import { logLifecycle } from '@/lib/lifecycleDebug' // TEMPORARY — see lifecycleDebug.ts
 
 export function AgencyLayout() {
-  // TEMPORARY — P1 tab-refocus investigation.
-  const location = useLocation()
-  useEffect(() => {
-    logLifecycle('AgencyLayout MOUNT', { pathname: location.pathname })
-    return () => logLifecycle('AgencyLayout UNMOUNT')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  useEffect(() => { logLifecycle('AgencyLayout route change', { pathname: location.pathname }) }, [location.pathname])
-
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
       <AgencySidebar />

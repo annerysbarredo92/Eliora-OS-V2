@@ -12,7 +12,6 @@ import { DigitalAssetsSection } from './DigitalAssetsSection'
 import { DigitalSidebar, DIGITAL_ICONS } from './DigitalSidebar'
 import { DigitalSectionPlaceholder } from './DigitalSectionPlaceholder'
 import { DigitalErrorBoundary } from './DigitalErrorBoundary'
-import { logLifecycle } from '@/lib/lifecycleDebug' // TEMPORARY — see lifecycleDebug.ts
 import { CompletionDot } from '@/components/ui/CompletionDot'
 import type { CompletionStatus } from '@/components/ui/CompletionDot'
 import {
@@ -38,13 +37,6 @@ export function DigitalShell({ client, ctx, onChanged, onRequestAI }: Props) {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawSection = searchParams.get('dsection')
   const section = resolveDigitalSectionId(rawSection)
-
-  // TEMPORARY — P1 tab-refocus investigation.
-  useEffect(() => {
-    logLifecycle('DigitalShell MOUNT', { clientId: client.id })
-    return () => logLifecycle('DigitalShell UNMOUNT', { clientId: client.id })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const [completion, setCompletion] = useState<Record<DigitalSectionId, CompletionStatus>>(EMPTY_COMPLETION)
 
