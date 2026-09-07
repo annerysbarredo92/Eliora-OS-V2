@@ -6,6 +6,9 @@ import { DomainsSection } from './DomainsSection'
 import { BusinessListingsSection } from './BusinessListingsSection'
 import { SocialChannelsSection } from './SocialChannelsSection'
 import { SocialTrackerSection } from './SocialTrackerSection'
+import { SeoSection } from './SeoSection'
+import { TrackingSection } from './TrackingSection'
+import { DigitalAssetsSection } from './DigitalAssetsSection'
 import { DigitalSidebar, DIGITAL_ICONS } from './DigitalSidebar'
 import { DigitalSectionPlaceholder } from './DigitalSectionPlaceholder'
 import { DigitalErrorBoundary } from './DigitalErrorBoundary'
@@ -30,7 +33,7 @@ const EMPTY_COMPLETION: Record<DigitalSectionId, CompletionStatus> = {
   seo: 'unknown', 'tracking-analytics': 'unknown', 'digital-assets': 'unknown',
 }
 
-export function DigitalShell({ client, ctx, onChanged }: Props) {
+export function DigitalShell({ client, ctx, onChanged, onRequestAI }: Props) {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawSection = searchParams.get('dsection')
   const section = resolveDigitalSectionId(rawSection)
@@ -113,6 +116,7 @@ export function DigitalShell({ client, ctx, onChanged }: Props) {
                 onCompletionLoaded={setCompletion}
                 onViewChannelTracker={viewChannelTracker}
                 initialChannelId={initialChannelId}
+                onRequestAI={onRequestAI}
               />
             </div>
           </DigitalErrorBoundary>
@@ -130,7 +134,7 @@ export function DigitalShell({ client, ctx, onChanged }: Props) {
 /* ── Section renderer ────────────────────────────────────── */
 
 function SectionRenderer({
-  section, client, ctx, onChanged, onSectionChange, onCompletionLoaded, onViewChannelTracker, initialChannelId,
+  section, client, ctx, onChanged, onSectionChange, onCompletionLoaded, onViewChannelTracker, initialChannelId, onRequestAI,
 }: {
   section: DigitalSectionId
   client: Client
@@ -140,6 +144,7 @@ function SectionRenderer({
   onCompletionLoaded: (c: Record<DigitalSectionId, CompletionStatus>) => void
   onViewChannelTracker: (channel: SocialChannel) => void
   initialChannelId?: string
+  onRequestAI: () => void
 }) {
   const def = DIGITAL_SECTIONS.find(s => s.id === section)!
 
@@ -147,9 +152,11 @@ function SectionRenderer({
     case 'overview':
       return (
         <DigitalOverview
-          clientId={client.id}
+          client={client}
+          ctx={ctx}
           onSectionChange={onSectionChange}
           onCompletionLoaded={onCompletionLoaded}
+          onRequestAI={onRequestAI}
         />
       )
     case 'website':
@@ -162,6 +169,12 @@ function SectionRenderer({
       return <SocialTrackerSection client={client} ctx={ctx} onChanged={onChanged} onGoToChannels={() => onSectionChange('social-channels')} initialChannelId={initialChannelId} />
     case 'business-listings':
       return <BusinessListingsSection client={client} ctx={ctx} onChanged={onChanged} />
+    case 'seo':
+      return <SeoSection client={client} ctx={ctx} onChanged={onChanged} />
+    case 'tracking-analytics':
+      return <TrackingSection client={client} ctx={ctx} onChanged={onChanged} />
+    case 'digital-assets':
+      return <DigitalAssetsSection client={client} ctx={ctx} onChanged={onChanged} />
     default:
       return <DigitalSectionPlaceholder section={def} onBack={() => onSectionChange('overview')} />
   }

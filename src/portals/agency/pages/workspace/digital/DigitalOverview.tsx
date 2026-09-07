@@ -3,28 +3,36 @@ import {
   listWebsites, listDomains, listSocialChannels, listRecentSocialSnapshots,
   listBusinessListings, getSeoProfile, listTrackingConfigurations, listDigitalAssets,
 } from '@/features/digital/api'
+import * as AI from '@/features/ai/api'
 import { computeDigitalHealth, DIGITAL_HEALTH_BAND_LABEL, fromSettled } from './digitalHealth'
 import type { DigitalHealthResult } from './digitalHealth'
 import { computeDigitalCompletion } from './digitalCompletion'
 import { domainExpirationState } from './domainExpiration'
+import { buildDigitalAiContext, DIGITAL_AI_ACTIONS } from './digitalIntelligence'
+import type { DigitalAiContextInput } from './digitalIntelligence'
 import { DIGITAL_ICONS } from './DigitalSidebar'
 import { KpiCard } from '@/components/ui/KpiCard'
+import { Button } from '@/components/ui/Button'
+import { Textarea } from '@/components/ui/Textarea'
 import type { DigitalSectionId } from './sections'
 import type {
-  Website, Domain, SocialChannel,
+  Client, Website, Domain, SocialChannel,
   BusinessListing, SeoProfile, TrackingConfiguration, DigitalAsset,
 } from '@/types'
 import type { CompletionStatus } from '@/components/ui/CompletionDot'
 
 interface Props {
-  clientId: string
+  client: Client
+  ctx: { agencyId: string; actorId: string }
   onSectionChange: (id: string) => void
   onCompletionLoaded: (completion: Record<DigitalSectionId, CompletionStatus>) => void
+  onRequestAI: () => void
 }
 
 type LoadState = 'loading' | 'ready' | 'all_failed'
 
-export function DigitalOverview({ clientId, onSectionChange, onCompletionLoaded }: Props) {
+export function DigitalOverview({ client, ctx, onSectionChange, onCompletionLoaded, onRequestAI }: Props) {
+  const clientId = client.id
   const [state, setState] = useState<LoadState>('loading')
   const [health, setHealth] = useState<DigitalHealthResult | null>(null)
   const [websites, setWebsites] = useState<Website[]>([])
@@ -38,6 +46,10 @@ export function DigitalOverview({ clientId, onSectionChange, onCompletionLoaded 
   // fetch failure too) so the KpiCard can tell "never assessed" apart from
   // "could not check right now" — see the SEO wording requirement.
   const [seoUnavailable, setSeoUnavailable] = useState(false)
+  // Raw settled results, kept alongside the plain-array state above —
+  // Digital Intelligence needs to tell a rejected source apart from a
+  // genuinely empty one (§29), which the plain arrays alone can't do.
+  const [aiContextInput, setAiContextInput] = useState<DigitalAiContextInput | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -90,6 +102,18 @@ export function DigitalOverview({ clientId, onSectionChange, onCompletionLoaded 
         digitalAssets: fromSettled(assetsR),
       })
       onCompletionLoaded(completion)
+
+      setAiContextInput({
+        health: healthResult,
+        websites: fromSettled(websitesR),
+        domains: fromSettled(domainsR),
+        socialChannels: fromSettled(socialR),
+        socialSnapshots: fromSettled(snapshotsR),
+        businessListings: fromSettled(listingsR),
+        seoProfile: fromSettled(seoR),
+        trackingConfigurations: fromSettled(trackingR),
+        digitalAssets: fromSettled(assetsR),
+      })
 
       setState('ready')
     }
@@ -204,6 +228,112 @@ export function DigitalOverview({ clientId, onSectionChange, onCompletionLoaded 
           </div>
         </div>
       )}
+
+      {/* ── Digital Intelligence ─────────────────────────────── */}
+      <DigitalIntelligenceCard
+        client={client}
+        ctx={ctx}
+        contextInput={aiContextInput}
+        onOpenFullAssistant={onRequestAI}
+      />
+    </div>
+  )
+}
+
+/* ── Digital Intelligence card ───────────────────────────────
+   Reuses the existing per-client AI Project Assistant pipeline (see
+   AiTab.tsx: kind: 'analysis' on the ai-generate Edge Function) — same
+   Anthropic key held server-side, same ai_generations logging, no new AI
+   product. This card only builds a Digital-specific structured context
+   (digitalIntelligence.ts) and presents the answer inline, since Digital
+   has no dedicated nav item to send a full chat to (§26). */
+
+function DigitalIntelligenceCard({ client, ctx, contextInput, onOpenFullAssistant }: {
+  client: Client
+  ctx: { agencyId: string; actorId: string }
+  contextInput: DigitalAiContextInput | null
+  onOpenFullAssistant: () => void
+}) {
+  const [question, setQuestion] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [answer, setAnswer] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function ask(q: string) {
+    const text = q.trim()
+    if (!text || loading || !contextInput) return
+    setLoading(true); setError(null); setAnswer(null)
+    try {
+      const brief = buildDigitalAiContext(client, contextInput, text)
+      const outcome = await AI.generate(brief, 1, 'analysis', { agencyId: ctx.agencyId, actorId: ctx.actorId, clientId: client.id })
+      if (outcome.error) throw new Error(outcome.error)
+      if (outcome.notConfigured) throw new Error('AI is not configured yet. Set an Anthropic API key in Supabase Secrets.')
+      const summary = (outcome.result as unknown as { summary?: string })?.summary
+      if (!summary) throw new Error('No response received from AI.')
+      setAnswer(summary)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate Digital Intelligence')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ background: 'var(--surface-solid)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', padding: 18 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted)' }}>
+          Digital Intelligence
+        </p>
+        <button
+          onClick={onOpenFullAssistant}
+          style={{ background: 'none', border: 'none', color: 'var(--violet)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)', padding: 0 }}
+        >
+          Open full AI Assistant →
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+        {DIGITAL_AI_ACTIONS.map(a => (
+          <button
+            key={a.label}
+            onClick={() => ask(a.query)}
+            disabled={loading || !contextInput}
+            style={{
+              padding: '7px 12px', fontSize: 12.5, fontWeight: 500, fontFamily: 'var(--font-sans)',
+              background: 'var(--surface)', border: '1px solid var(--hairline)', borderRadius: 999,
+              cursor: loading || !contextInput ? 'default' : 'pointer', color: 'var(--ink)',
+              opacity: loading || !contextInput ? 0.55 : 1,
+            }}
+          >
+            {a.label}
+          </button>
+        ))}
+      </div>
+
+      {answer && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--hairline-2)', borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
+          <p style={{ fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--ink)' }}>{answer}</p>
+        </div>
+      )}
+      {loading && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12, padding: '4px 2px' }}>
+          {[0, 1, 2].map(i => (
+            <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--violet)', animation: `dig-bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+          ))}
+        </div>
+      )}
+      {error && <p style={{ fontSize: 12.5, color: 'var(--danger)', marginBottom: 12 }}>{error}</p>}
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+        <div style={{ flex: 1 }}>
+          <Textarea label="" value={question} onChange={e => setQuestion(e.target.value)} placeholder="Ask about this client's digital infrastructure…" rows={1} />
+        </div>
+        <Button variant="primary" size="sm" loading={loading} disabled={!question.trim() || !contextInput} onClick={() => { ask(question); setQuestion('') }}>
+          Ask
+        </Button>
+      </div>
+
+      <style>{`@keyframes dig-bounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}`}</style>
     </div>
   )
 }
@@ -368,14 +498,32 @@ function buildAttentionItems(args: {
     if (missingUrl.length > 0) items.push({ label: `${pluralize(missingUrl.length, 'listing is', 'listings are')} missing a profile URL`, sectionId: 'business-listings' })
   }
 
-  if (args.trackingConfigs.length === 0) items.push({ label: 'No analytics or tracking configured', sectionId: 'tracking-analytics' })
+  if (args.trackingConfigs.length === 0) {
+    items.push({ label: 'No analytics or tracking configured', sectionId: 'tracking-analytics' })
+  } else {
+    // MANUAL and CONFIGURED are valid, expected Wave 4 states (§18: no
+    // live external APIs this wave) — only a genuine connection error is
+    // worth surfacing here, same posture as the social-channel check above.
+    const trackingErrors = args.trackingConfigs.filter(c => c.status === 'error')
+    if (trackingErrors.length > 0) {
+      items.push({ label: `${pluralize(trackingErrors.length, 'tracking configuration has', 'tracking configurations have')} a connection error`, sectionId: 'tracking-analytics' })
+    }
+  }
 
-  // SEO: only raise an alert for the two KNOWN states — never assessed yet,
-  // or genuinely unreachable. Neither is a guess.
+  // SEO: only raise an alert for KNOWN states — never assessed yet,
+  // genuinely unreachable, or an explicit 'issue' the user recorded.
+  // Never manufactured from a field that simply wasn't filled in.
   if (args.seoUnavailable) {
     items.push({ label: 'SEO status could not be checked', sectionId: 'seo' })
   } else if (!args.seoProfile) {
     items.push({ label: 'SEO has not been assessed yet', sectionId: 'seo' })
+  } else {
+    const p = args.seoProfile
+    if (p.indexing_status === 'issue') items.push({ label: 'Indexing has a known issue', sectionId: 'seo' })
+    if (p.sitemap_status === 'issue') items.push({ label: 'Sitemap has a known issue', sectionId: 'seo' })
+    if (p.robots_status === 'issue') items.push({ label: 'Robots.txt has a known issue', sectionId: 'seo' })
+    const criticalIssues = p.issues.filter(i => i.severity === 'high').length
+    if (criticalIssues > 0) items.push({ label: `${pluralize(criticalIssues, 'critical SEO issue', 'critical SEO issues')} flagged`, sectionId: 'seo' })
   }
 
   return items

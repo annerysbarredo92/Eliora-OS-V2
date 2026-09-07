@@ -77,7 +77,7 @@ export const DIGITAL_SECTIONS: DigitalSectionDef[] = [
     group: 'infrastructure',
     ariaLabel: 'SEO',
     description: 'Technical SEO infrastructure and baseline visibility — indexing, sitemap, robots.txt, and Search Console.',
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'tracking-analytics',
@@ -85,7 +85,7 @@ export const DIGITAL_SECTIONS: DigitalSectionDef[] = [
     group: 'infrastructure',
     ariaLabel: 'Tracking and analytics',
     description: 'Analytics and tracking systems configured for this client — GA4, GTM, Meta Pixel, and more.',
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'digital-assets',
@@ -93,7 +93,7 @@ export const DIGITAL_SECTIONS: DigitalSectionDef[] = [
     group: 'infrastructure',
     ariaLabel: 'Digital assets',
     description: 'Existing Files associated with this client\'s digital properties — favicons, app icons, social assets, and technical documents.',
-    implemented: false,
+    implemented: true,
   },
 ]
 

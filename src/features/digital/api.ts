@@ -1,10 +1,11 @@
 import { supabase } from '@/lib/supabase'
 import type {
   Website, Domain, SocialChannel, SocialChannelSnapshot,
-  BusinessListing, SeoProfile, TrackingConfiguration, DigitalAsset,
+  BusinessListing, SeoProfile, SeoIssue, TrackingConfiguration, DigitalAsset,
   WebsiteType, WebsiteStatus, DomainStatus, DomainSslStatus,
   BusinessListingProvider, ListingStatus, SocialPlatform,
   DigitalOwnershipStatus, DigitalIntegrationStatus, DigitalVerificationStatus,
+  SeoCheckStatus, TrackingProvider, DigitalAssetCategory,
 } from '@/types'
 
 interface Ctx { agencyId: string; actorId: string }
@@ -111,6 +112,14 @@ export function parseDigitalMutationError(msg: string): string {
   if (msg.includes('client_not_found')) return 'Client not found or access denied.'
   if (msg.includes('business_listings_custom_name_required')) return 'Enter a name for this custom listing provider.'
   if (msg.includes('tracking_configurations_custom_name_required')) return 'Enter a name for this custom tracking provider.'
+  if (msg.includes('seo_profiles_one_per_client')) return 'This client already has an SEO profile — edit the existing one instead of creating a new one.'
+  if (msg.includes('digital_assets_client_asset_unique_idx')) return 'This file is already linked as a Digital Asset — edit the existing reference instead.'
+  if (msg.includes('digital_assets_single_relation')) return 'A Digital Asset can be associated with only one website, domain, social channel, or listing at a time.'
+  if (msg.includes('client_asset_not_found')) return 'That file could not be found or you do not have access.'
+  if (msg.includes('client_asset_mismatch')) return 'That file does not belong to this client.'
+  if (msg.includes('domain_mismatch')) return 'That domain does not belong to this client.'
+  if (msg.includes('social_channel_mismatch')) return 'That social channel does not belong to this client.'
+  if (msg.includes('business_listing_mismatch')) return 'That business listing does not belong to this client.'
   return msg
 }
 
@@ -250,6 +259,46 @@ export const VERIFICATION_STATUS_OPTIONS = optionsFromLabels(VERIFICATION_STATUS
 export const LISTING_STATUS_OPTIONS = optionsFromLabels(LISTING_STATUS_LABELS)
 export const SOCIAL_PLATFORM_OPTIONS = optionsFromLabels(SOCIAL_PLATFORM_LABELS)
 export const INTEGRATION_STATUS_OPTIONS = optionsFromLabels(INTEGRATION_STATUS_LABELS)
+
+/** unknown/not_configured/issue/healthy — an assessment verdict, not a
+ * lifecycle status. 'unknown' here always means "not assessed", the same
+ * meaning it carries throughout Digital. */
+export const SEO_CHECK_STATUS_LABELS: Record<SeoCheckStatus, string> = {
+  unknown: 'Not assessed',
+  not_configured: 'Not configured',
+  issue: 'Issue found',
+  healthy: 'Healthy',
+}
+export const SEO_CHECK_STATUS_OPTIONS = optionsFromLabels(SEO_CHECK_STATUS_LABELS)
+
+export const SEO_ISSUE_SEVERITY_LABELS: Record<SeoIssue['severity'], string> = {
+  low: 'Low', medium: 'Medium', high: 'High',
+}
+export const SEO_ISSUE_SEVERITY_OPTIONS = optionsFromLabels(SEO_ISSUE_SEVERITY_LABELS)
+
+export const TRACKING_PROVIDER_LABELS: Record<TrackingProvider, string> = {
+  ga4: 'Google Analytics 4',
+  gtm: 'Google Tag Manager',
+  search_console: 'Search Console',
+  meta_pixel: 'Meta Pixel',
+  google_ads: 'Google Ads Conversion',
+  tiktok_pixel: 'TikTok Pixel',
+  linkedin_insight: 'LinkedIn Insight Tag',
+  custom: 'Custom',
+}
+export const TRACKING_PROVIDER_OPTIONS = optionsFromLabels(TRACKING_PROVIDER_LABELS)
+
+export const DIGITAL_ASSET_CATEGORY_LABELS: Record<DigitalAssetCategory, string> = {
+  favicon: 'Favicon',
+  website_image: 'Website image',
+  app_icon: 'App icon',
+  social_profile_asset: 'Social profile asset',
+  downloadable_resource: 'Downloadable resource',
+  technical_document: 'Technical document',
+  platform_asset: 'Platform asset',
+  other: 'Other',
+}
+export const DIGITAL_ASSET_CATEGORY_OPTIONS = optionsFromLabels(DIGITAL_ASSET_CATEGORY_LABELS)
 
 /* ── WEBSITES: create / update / archive ──────────────────── */
 
@@ -651,4 +700,191 @@ export async function upsertSocialChannelSnapshot(
 export async function deleteSocialChannelSnapshot(snapshotId: string): Promise<void> {
   const { error } = await supabase.from('social_channel_snapshots').delete().eq('id', snapshotId)
   if (error) { console.error('deleteSocialChannelSnapshot:', error.message); throw new Error(error.message) }
+}
+
+/* ── SEO PROFILE: assessment, not a list ────────────────────
+   seo_profiles enforces exactly one row per client (seo_profiles_one_per_
+   client). This is an ASSESSMENT record (Wave 4 §8) — save() always
+   upserts on client_id, so the form works identically whether a profile
+   already exists or this is the client's first assessment; the caller
+   never has to branch on create-vs-update. */
+
+export interface SeoProfileFormValues {
+  website_id: string // '' = unassigned
+  indexing_status: SeoCheckStatus
+  sitemap_status: SeoCheckStatus
+  robots_status: SeoCheckStatus
+  search_console_status: DigitalIntegrationStatus
+  technical_health_status: SeoCheckStatus
+  keyword_baseline_count: string // integer-as-string; '' = unrecorded
+  visibility_baseline_score: string // decimal-as-string; '' = unrecorded
+  issues: SeoIssue[]
+  recommendations: string
+  last_checked_at: string
+  notes: string
+}
+
+/**
+ * Upserts atomically on client_id — the deployed seo_profiles_one_per_
+ * client unique constraint. A genuine `INSERT ... ON CONFLICT DO UPDATE`,
+ * safe under the existing RLS insert/update policies (both admin-gated,
+ * same as every other Digital mutation) without a custom RPC — same
+ * reasoning as upsertSocialChannelSnapshot above.
+ */
+export async function saveSeoProfile(clientId: string, values: SeoProfileFormValues, ctx: Ctx): Promise<SeoProfile> {
+  const keywordCount = parseNonNegInt(values.keyword_baseline_count, 'Keyword baseline count')
+  const visibilityScore = parseNonNegDecimal(values.visibility_baseline_score, 'Visibility baseline score')
+  const payload = {
+    agency_id: ctx.agencyId,
+    client_id: clientId,
+    website_id: values.website_id || null,
+    indexing_status: values.indexing_status,
+    sitemap_status: values.sitemap_status,
+    robots_status: values.robots_status,
+    search_console_status: values.search_console_status,
+    technical_health_status: values.technical_health_status,
+    keyword_baseline_count: keywordCount,
+    visibility_baseline_score: visibilityScore,
+    issues: values.issues,
+    recommendations: values.recommendations.trim() || null,
+    last_checked_at: values.last_checked_at || null,
+    notes: values.notes.trim() || null,
+    updated_by: ctx.actorId,
+  }
+  const { data, error } = await supabase
+    .from('seo_profiles')
+    .upsert({ ...payload, created_by: ctx.actorId }, { onConflict: 'client_id' })
+    .select()
+    .single()
+  if (error) { console.error('saveSeoProfile:', error.message); throw new Error(parseDigitalMutationError(error.message)) }
+  return data as SeoProfile
+}
+
+/* ── TRACKING & ANALYTICS: create / update / delete ─────────
+   No archived/inactive lifecycle column exists on the deployed schema
+   (unlike websites/social_channels/business_listings) — every row is a
+   current configuration until removed. The tracking_configurations_delete
+   RLS policy (admin-only) is the deployed, intended way to remove one;
+   there is no separate archive state to invent here. */
+
+export interface TrackingConfigFormValues {
+  website_id: string // '' = unassigned
+  provider: TrackingProvider
+  custom_provider_name: string
+  external_id: string
+  status: DigitalIntegrationStatus
+  verification_status: DigitalVerificationStatus
+  last_checked_at: string
+  last_synced_at: string
+  notes: string
+}
+
+function trackingConfigPayload(values: TrackingConfigFormValues) {
+  if (values.provider === 'custom' && !values.custom_provider_name.trim()) {
+    throw new Error('Enter a name for this custom tracking provider.')
+  }
+  return {
+    website_id: values.website_id || null,
+    provider: values.provider,
+    custom_provider_name: values.provider === 'custom' ? values.custom_provider_name.trim() : null,
+    external_id: values.external_id.trim() || null,
+    status: values.status,
+    verification_status: values.verification_status,
+    last_checked_at: values.last_checked_at || null,
+    last_synced_at: values.last_synced_at || null,
+    notes: values.notes.trim() || null,
+  }
+}
+
+export async function createTrackingConfiguration(clientId: string, values: TrackingConfigFormValues, ctx: Ctx): Promise<TrackingConfiguration> {
+  const payload = trackingConfigPayload(values)
+  const { data, error } = await supabase.from('tracking_configurations').insert({
+    ...payload,
+    agency_id: ctx.agencyId,
+    client_id: clientId,
+    created_by: ctx.actorId,
+    updated_by: ctx.actorId,
+  }).select().single()
+  if (error) { console.error('createTrackingConfiguration:', error.message); throw new Error(parseDigitalMutationError(error.message)) }
+  return data as TrackingConfiguration
+}
+
+export async function updateTrackingConfiguration(id: string, values: TrackingConfigFormValues, ctx: Ctx): Promise<void> {
+  const payload = trackingConfigPayload(values)
+  const { error } = await supabase.from('tracking_configurations').update({
+    ...payload,
+    updated_by: ctx.actorId,
+  }).eq('id', id)
+  if (error) { console.error('updateTrackingConfiguration:', error.message); throw new Error(parseDigitalMutationError(error.message)) }
+}
+
+/** Plain delete — see the module comment above for why this table has no
+ * archive concept to preserve instead. RLS (admin-only) is the real gate. */
+export async function deleteTrackingConfiguration(id: string): Promise<void> {
+  const { error } = await supabase.from('tracking_configurations').delete().eq('id', id)
+  if (error) { console.error('deleteTrackingConfiguration:', error.message); throw new Error(error.message) }
+}
+
+/* ── DIGITAL ASSETS: link / update / unlink ──────────────────
+   digital_assets never stores a file — client_asset_id always points at
+   an existing row in the canonical client_assets store (features/files/
+   api.ts). Unlinking (deleteDigitalAsset) removes only this reference
+   row; it never touches client_assets or storage. See digital_assets'
+   Wave 1 header and the Wave 4 spec's "Digital Asset Delete Semantics". */
+
+export type DigitalAssetRelation = 'none' | 'website' | 'domain' | 'social_channel' | 'business_listing'
+
+export interface DigitalAssetFormValues {
+  client_asset_id: string
+  category: DigitalAssetCategory
+  relation: DigitalAssetRelation
+  relation_id: string
+  notes: string
+}
+
+function digitalAssetRelationColumns(values: DigitalAssetFormValues) {
+  return {
+    website_id: values.relation === 'website' ? (values.relation_id || null) : null,
+    domain_id: values.relation === 'domain' ? (values.relation_id || null) : null,
+    social_channel_id: values.relation === 'social_channel' ? (values.relation_id || null) : null,
+    business_listing_id: values.relation === 'business_listing' ? (values.relation_id || null) : null,
+  }
+}
+
+export async function createDigitalAsset(clientId: string, values: DigitalAssetFormValues, ctx: Ctx): Promise<DigitalAsset> {
+  if (!values.client_asset_id) throw new Error('Choose a file to link.')
+  const { data, error } = await supabase.from('digital_assets').insert({
+    agency_id: ctx.agencyId,
+    client_id: clientId,
+    client_asset_id: values.client_asset_id,
+    category: values.category,
+    ...digitalAssetRelationColumns(values),
+    notes: values.notes.trim() || null,
+    created_by: ctx.actorId,
+  }).select().single()
+  if (error) { console.error('createDigitalAsset:', error.message); throw new Error(parseDigitalMutationError(error.message)) }
+  return data as DigitalAsset
+}
+
+/** Metadata only — category, association, notes. The underlying file
+ * reference (client_asset_id) is fixed at creation; re-linking a
+ * different file is a new Digital Asset, not an edit of this one.
+ * digital_assets has no updated_by/updated_at column, unlike every other
+ * Digital table — nothing here to attribute the edit to but the row
+ * itself, so no Ctx is needed. */
+export async function updateDigitalAsset(id: string, values: DigitalAssetFormValues): Promise<void> {
+  const { error } = await supabase.from('digital_assets').update({
+    category: values.category,
+    ...digitalAssetRelationColumns(values),
+    notes: values.notes.trim() || null,
+  }).eq('id', id)
+  if (error) { console.error('updateDigitalAsset:', error.message); throw new Error(parseDigitalMutationError(error.message)) }
+}
+
+/** Unlink — deletes only the digital_assets reference row. The
+ * underlying client_assets file is untouched (no cascade in this
+ * direction); see the module comment above. */
+export async function deleteDigitalAsset(id: string): Promise<void> {
+  const { error } = await supabase.from('digital_assets').delete().eq('id', id)
+  if (error) { console.error('deleteDigitalAsset:', error.message); throw new Error(error.message) }
 }

@@ -183,22 +183,31 @@ function seoDimension(profile: SourceResult<SeoProfile | null>): DigitalDimensio
 }
 
 /* ── Tracking Readiness ────────────────────────────────────
-   complete: any provider connected/syncing/live.
-   partial:  configured but not yet connected.
-   empty:    nothing configured. Does not require every possible provider —
-             one working analytics setup is enough to read as complete. */
+   Wave 4 correction: infrastructure readiness, not connection liveness or
+   raw configuration count (spec §19 — "one correctly configured GA4
+   record may be healthier than five broken tracking configs"). A manual
+   or configured-but-not-yet-connected record is a legitimate, expected
+   Wave 4 state (§18: no live external APIs this wave) and must not read
+   as broken — only a genuine 'error' status does.
+   complete: every configuration is in a non-error state.
+   partial:  configurations exist, but at least one has a connection error.
+   empty:    nothing configured. */
 function trackingDimension(configs: SourceResult<TrackingConfiguration[]>): DigitalDimension {
   if (configs.status === 'rejected') {
     return { id: 'tracking-analytics', label: 'Tracking & Analytics', status: 'unknown', sectionId: 'tracking-analytics', tip: 'Could not load tracking data' }
   }
   const list = configs.value ?? []
-  const live = list.some(c => c.status === 'connected' || c.status === 'syncing' || c.status === 'live')
+  if (list.length === 0) {
+    return { id: 'tracking-analytics', label: 'Tracking & Analytics', status: 'empty', sectionId: 'tracking-analytics', tip: 'No tracking configured' }
+  }
+  const errored = list.filter(c => c.status === 'error')
+  const allReady = errored.length === 0
   return {
     id: 'tracking-analytics',
     label: 'Tracking & Analytics',
-    status: live ? 'complete' : list.length > 0 ? 'partial' : 'empty',
+    status: allReady ? 'complete' : 'partial',
     sectionId: 'tracking-analytics',
-    tip: list.length === 0 ? 'No tracking configured' : !live ? 'Configured but not connected' : null,
+    tip: allReady ? null : `${errored.length} of ${list.length} ${errored.length === 1 ? 'has' : 'have'} a connection error`,
   }
 }
 
