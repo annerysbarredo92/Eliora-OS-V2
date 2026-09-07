@@ -18,6 +18,7 @@ import { BusinessHeader }             from './BusinessHeader'
 import { BusinessSectionPlaceholder } from './BusinessSectionPlaceholder'
 import { BusinessErrorBoundary }      from './BusinessErrorBoundary'
 import { useCompletionStatus, type AccountCompletionData } from './useCompletionStatus'
+import { logLifecycle } from '@/lib/lifecycleDebug' // TEMPORARY — see lifecycleDebug.ts
 import type { AccountDataForHealth } from './businessHealth'
 import { CompletionDot }              from '@/components/ui/CompletionDot'
 import type { CompletionStatus }      from '@/components/ui/CompletionDot'
@@ -35,6 +36,13 @@ export function BusinessShell({ client, ctx, onChanged, onRequestAI }: Props) {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawSection = searchParams.get('section')
   const section = resolveSectionId(rawSection)
+
+  // TEMPORARY — P1 tab-refocus investigation.
+  useEffect(() => {
+    logLifecycle('BusinessShell MOUNT', { clientId: client.id })
+    return () => logLifecycle('BusinessShell UNMOUNT', { clientId: client.id })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [accountCompletion, setAccountCompletion] = useState<AccountCompletionData | undefined>(undefined)
   const handleAccountLoaded = useCallback(

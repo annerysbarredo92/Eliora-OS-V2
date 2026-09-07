@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useClient } from '@/features/clients/hooks'
+import { logLifecycle } from '@/lib/lifecycleDebug' // TEMPORARY — see lifecycleDebug.ts
 import { updateClient, archiveClient, clientToFormValues } from '@/features/clients/api'
 import { moveProjectStage } from '@/features/projects/api'
 import { useProjectStages } from '@/features/projects/hooks'
@@ -90,6 +91,16 @@ export function AgencyWorkspace() {
   const ctx = profile?.agency_id && profile?.id
     ? { agencyId: profile.agency_id, actorId: profile.id }
     : null
+
+  // TEMPORARY — P1 tab-refocus investigation.
+  useEffect(() => {
+    logLifecycle('ClientProfile MOUNT', { projectId })
+    return () => logLifecycle('ClientProfile UNMOUNT', { projectId })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    logLifecycle('ClientProfile useClient state', { projectId, loading, hasClient: !!client, clientId: client?.id, error })
+  }, [projectId, loading, client, error])
 
   async function handleEnablePortal() {
     if (!ctx || !client) return
