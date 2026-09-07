@@ -231,6 +231,10 @@ function ContractDetailModal({ contract, ctx, onStatus, onChanged, onClose }: {
   onClose: () => void
 }) {
   const [signatures, setSignatures] = useState<ContractSignature[]>([])
+  // Distinct from "not signed yet" — a failed fetch must not silently
+  // render as an empty signature list (see Business sub-fetch
+  // silent-failure audit finding). Signing itself is unaffected either way.
+  const [sigLoadError, setSigLoadError] = useState(false)
   const [showSign, setShowSign]     = useState(false)
   const [sigName, setSigName]       = useState('')
   const [sigEmail, setSigEmail]     = useState('')
@@ -238,7 +242,16 @@ function ContractDetailModal({ contract, ctx, onStatus, onChanged, onClose }: {
   const [err, setErr]               = useState<string | null>(null)
 
   useEffect(() => {
-    CT.listSignatures(contract.id).then(setSignatures).catch(() => {})
+    let cancelled = false
+    setSigLoadError(false)
+    CT.listSignatures(contract.id).then(sigs => {
+      if (cancelled) return
+      setSignatures(sigs)
+    }).catch(() => {
+      if (cancelled) return
+      setSigLoadError(true)
+    })
+    return () => { cancelled = true }
   }, [contract.id])
 
   async function handleSign(e: React.FormEvent) {
@@ -271,6 +284,9 @@ function ContractDetailModal({ contract, ctx, onStatus, onChanged, onClose }: {
           </div>
         )}
 
+        {sigLoadError && (
+          <p style={{ fontSize: 12.5, color: 'var(--danger)' }}>Signature history could not be loaded right now.</p>
+        )}
         {signatures.length > 0 && (
           <div>
             <p style={SL}>Signatures</p>

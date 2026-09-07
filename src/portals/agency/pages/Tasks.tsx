@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
+import { AlertBanner } from '@/components/ui/AlertBanner'
 import type { Task, TaskStatus, TaskPriority } from '@/types'
 
 export function AgencyTasks() {
@@ -16,10 +17,18 @@ export function AgencyTasks() {
   const { clients } = useClients()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
+  // Distinct from "no tasks" — a failed query must never render identically
+  // to a genuinely empty board (see silent-list-fetch audit finding).
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const ctx = profile?.agency_id && profile?.id ? { agencyId: profile.agency_id, actorId: profile.id } : null
 
-  const load = useCallback(async () => { try { setTasks(await TK.listTasks()) } catch { /* */ } finally { setLoading(false) } }, [])
+  const load = useCallback(async () => {
+    setLoadError(null)
+    try { setTasks(await TK.listTasks()) }
+    catch (e) { setLoadError(e instanceof Error ? e.message : 'Unable to load tasks.') }
+    finally { setLoading(false) }
+  }, [])
   useEffect(() => { load() }, [load])
   const clientName = (id: string | null) => id ? (clients.find(c => c.id === id)?.business_name ?? '') : ''
 
@@ -33,7 +42,11 @@ export function AgencyTasks() {
         <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>New task</Button>
       </div>
 
-      {loading ? <div style={{ height: 200, borderRadius: 16, background: 'var(--lavender-soft)', opacity: 0.4 }} /> : (
+      {loading ? <div style={{ height: 200, borderRadius: 16, background: 'var(--lavender-soft)', opacity: 0.4 }} /> : loadError ? (
+        <AlertBanner variant="danger" title="Unable to load tasks" action={{ label: 'Retry', onClick: load }}>
+          {loadError}
+        </AlertBanner>
+      ) : (
         <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 8 }}>
           {TASK_STATUSES.map(s => {
             const col = tasks.filter(t => t.status === s.value)

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { ActiveToggle } from '@/features/operations/components/ServiceModal'
+import { AlertBanner } from '@/components/ui/AlertBanner'
 import type { CalendarEvent, CalendarEventType } from '@/types'
 
 export function AgencyCalendar() {
@@ -17,10 +18,19 @@ export function AgencyCalendar() {
   const { clients } = useClients()
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
+  // Distinct from "nothing scheduled" — a failed query must never render
+  // identically to a genuinely empty calendar (see silent-list-fetch audit
+  // finding).
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const ctx = profile?.agency_id && profile?.id ? { agencyId: profile.agency_id, actorId: profile.id } : null
 
-  const load = useCallback(async () => { try { setEvents(await TK.listEvents()) } catch { /* */ } finally { setLoading(false) } }, [])
+  const load = useCallback(async () => {
+    setLoadError(null)
+    try { setEvents(await TK.listEvents()) }
+    catch (e) { setLoadError(e instanceof Error ? e.message : 'Unable to load the calendar.') }
+    finally { setLoading(false) }
+  }, [])
   useEffect(() => { load() }, [load])
 
   // group by date (agenda view)
@@ -39,7 +49,11 @@ export function AgencyCalendar() {
         <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>Schedule</Button>
       </div>
 
-      {loading ? <div style={{ height: 200, borderRadius: 16, background: 'var(--lavender-soft)', opacity: 0.4 }} /> : events.length === 0 ? (
+      {loading ? <div style={{ height: 200, borderRadius: 16, background: 'var(--lavender-soft)', opacity: 0.4 }} /> : loadError ? (
+        <AlertBanner variant="danger" title="Unable to load the calendar" action={{ label: 'Retry', onClick: load }}>
+          {loadError}
+        </AlertBanner>
+      ) : events.length === 0 ? (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', padding: '44px 24px', textAlign: 'center', color: 'var(--muted)', fontSize: 13.5 }}>Nothing scheduled yet.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>

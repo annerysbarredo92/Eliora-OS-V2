@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchProfile } from '@/lib/auth'
 import { hasRecoveryPending, clearRecoveryPending } from '@/lib/recoveryIntent'
@@ -89,6 +89,15 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(computeInitialState)
 
+  // Mirrors `state`, read synchronously inside the onAuthStateChange
+  // callback below (whose identity is fixed at mount time — a stale
+  // closure would otherwise see whatever `state` was on the very first
+  // render). Needed specifically to tell a genuine SIGNED_IN transition
+  // apart from GoTrue's benign same-session re-broadcast — see the
+  // SIGNED_IN branch below.
+  const stateRef = useRef<AuthState>(state)
+  useEffect(() => { stateRef.current = state }, [state])
+
   useEffect(() => {
     let mounted = true
 
@@ -150,7 +159,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // SIGNED_IN: re-enter loading so guards wait instead of acting on a stale null.
+      // SIGNED_IN. GoTrue legitimately re-emits this event, with the SAME
+      // still-valid session, every time the browser tab regains visibility
+      // (GoTrueClient#_onVisibilityChanged → #_recoverAndRefresh — confirmed
+      // by reading node_modules/@supabase/auth-js directly) — not only for
+      // a genuine new sign-in. Treating every SIGNED_IN identically used to
+      // force `loading: true` on every ordinary tab return, which
+      // RequireAuth/RequireAgency/RequireClient react to by swapping the
+      // whole authenticated tree for <AppLoader/>, destroying every open
+      // drawer/modal and unsaved form. A same-user reaffirmation of an
+      // already-loaded session must be a no-op here: nothing about who is
+      // signed in has changed, so nothing needs to reload.
+      const prior = stateRef.current
+      const isSameUserReaffirmation =
+        !prior.loading && !!prior.profile && prior.profile.id === session.user.id
+      if (isSameUserReaffirmation) {
+        // The authenticated tree stays mounted exactly as it is. A
+        // genuinely new sign-in — no profile loaded yet, or a different
+        // user — still falls through below and reloads normally, so login,
+        // a user switch on a shared session, and the post-signup profile
+        // retry are all unaffected.
+        return
+      }
+
+      // Genuine transition (initial login, or a different user signing in
+      // on this session) — re-enter loading so guards wait instead of
+      // acting on a stale null.
       if (mounted) setState(s => ({ ...s, loading: true }))
       loadFromSession(session)
     })

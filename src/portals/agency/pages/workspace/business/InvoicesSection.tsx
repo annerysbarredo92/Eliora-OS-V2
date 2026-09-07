@@ -255,6 +255,13 @@ function InvoiceDetailModal({ invoice, ctx, onStatus, onChanged, onClose }: {
   const [items, setItems]       = useState<InvoiceItem[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading]   = useState(true)
+  // Line items / payment history are a secondary source — the Payment
+  // Status stats above come straight from `invoice`, not this fetch, and
+  // stay accurate regardless. On failure this must read as "couldn't load
+  // history", never silently render as "no items, no payments" (see
+  // Business sub-fetch silent-failure audit finding). Recording a new
+  // payment remains fully available either way.
+  const [detailError, setDetailError] = useState(false)
   const [showPay, setShowPay]   = useState(false)
   const [payAmount, setPayAmount] = useState('')
   const [payMethod, setPayMethod] = useState<PaymentMethod>('manual')
@@ -264,9 +271,16 @@ function InvoiceDetailModal({ invoice, ctx, onStatus, onChanged, onClose }: {
   const [idempotencyKey]        = useState(() => crypto.randomUUID())
 
   useEffect(() => {
+    let cancelled = false
+    setLoading(true); setDetailError(false)
     B.getInvoice(invoice.id).then(r => {
+      if (cancelled) return
       setItems(r.items); setPayments(r.payments); setLoading(false)
-    }).catch(() => setLoading(false))
+    }).catch(() => {
+      if (cancelled) return
+      setDetailError(true); setLoading(false)
+    })
+    return () => { cancelled = true }
   }, [invoice.id])
 
   async function handlePay(e: React.FormEvent) {
@@ -296,6 +310,9 @@ function InvoiceDetailModal({ invoice, ctx, onStatus, onChanged, onClose }: {
       width={600}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {!loading && detailError && (
+          <p style={{ fontSize: 12.5, color: 'var(--danger)' }}>Line items and payment history could not be loaded right now. The totals below are still accurate.</p>
+        )}
         {!loading && items.length > 0 && (
           <div>
             <p style={SL}>Line Items</p>

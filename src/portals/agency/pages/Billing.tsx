@@ -11,20 +11,30 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
+import { AlertBanner } from '@/components/ui/AlertBanner'
 import { ActiveToggle } from '@/features/operations/components/ServiceModal'
-import type { Invoice, PaymentMethod } from '@/types'
+import type { Invoice, InvoiceStatus, PaymentMethod } from '@/types'
 
 export function AgencyBilling() {
   const { profile } = useAuth()
   const { clients } = useClients()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
+  // Distinct from "no invoices yet" — a failed query must never render
+  // identically to a genuinely empty list (see silent-list-fetch audit
+  // finding).
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [detail, setDetail] = useState<Invoice | null>(null)
 
   const ctx = profile?.agency_id && profile?.id ? { agencyId: profile.agency_id, actorId: profile.id } : null
   const clientName = (id: string) => clients.find(c => c.id === id)?.business_name ?? '—'
-  const load = useCallback(async () => { try { setInvoices(await B.listInvoices()) } catch { /* table maybe not applied */ } finally { setLoading(false) } }, [])
+  const load = useCallback(async () => {
+    setLoadError(null)
+    try { setInvoices(await B.listInvoices()) }
+    catch (e) { setLoadError(e instanceof Error ? e.message : 'Unable to load invoices.') }
+    finally { setLoading(false) }
+  }, [])
   useEffect(() => { load() }, [load])
   const m = B.computeBillingMetrics(invoices)
 
@@ -45,10 +55,14 @@ export function AgencyBilling() {
         <KpiCard label="Overdue" value={money(m.overdue)} accent="muted" />
       </div>
 
-      {loading ? <Skel /> : invoices.length === 0 ? (
+      {loading ? <Skel /> : loadError ? (
+        <AlertBanner variant="danger" title="Unable to load invoices" action={{ label: 'Retry', onClick: load }}>
+          {loadError}
+        </AlertBanner>
+      ) : invoices.length === 0 ? (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-glass)', padding: '44px 24px', textAlign: 'center' }}>
           <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 7 }}>No invoices yet</p>
-          <p style={{ fontSize: 13.5, color: 'var(--muted)' }}>{clients.length === 0 ? 'Add a client first.' : 'Create your first invoice. (Run wave-03 SQL if this looks empty after adding one.)'}</p>
+          <p style={{ fontSize: 13.5, color: 'var(--muted)' }}>{clients.length === 0 ? 'Add a client first.' : 'Create your first invoice.'}</p>
         </div>
       ) : (
         <div style={{ background: 'var(--surface)', backdropFilter: 'blur(22px) saturate(1.5)', border: '1px solid var(--hairline)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-glass)', overflowX: 'auto' }}>
@@ -104,7 +118,38 @@ function CreateInvoice({ open, clients, onClose, onCreated, ctx }: { open: boole
 function InvoiceDetail({ invoice, clientName, ctx, onChanged, onClose }: { invoice: Invoice; clientName: string; ctx: { agencyId: string; actorId: string }; onChanged: () => void; onClose: () => void }) {
   const [payAmount, setPayAmount] = useState(''); const [method, setMethod] = useState<PaymentMethod>('manual'); const [busy, setBusy] = useState(false)
   const [idempotencyKey] = useState(() => crypto.randomUUID())
-  async function pay() { setBusy(true); try { await recordInvoicePaymentSafe(invoice.id, toCents(payAmount), method, '', idempotencyKey, ctx); onChanged(); onClose() } catch { setBusy(false) } }
+  // Shared by every mutation this modal can trigger (payment, status
+  // change) — only one runs at a time, so one error slot is enough. A
+  // failed mutation must never look successful: the modal stays open, the
+  // error is shown, and `onChanged`/`onClose` only run once the mutation
+  // has actually succeeded.
+  const [mutationError, setMutationError] = useState<string | null>(null)
+  const [statusBusy, setStatusBusy] = useState<InvoiceStatus | null>(null)
+
+  async function pay() {
+    setMutationError(null); setBusy(true)
+    try {
+      await recordInvoicePaymentSafe(invoice.id, toCents(payAmount), method, '', idempotencyKey, ctx)
+      onChanged(); onClose()
+    } catch (e) {
+      setMutationError(e instanceof Error ? e.message : 'Payment could not be recorded. Please try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function changeStatus(status: InvoiceStatus) {
+    setMutationError(null); setStatusBusy(status)
+    try {
+      await B.setInvoiceStatus(invoice, status, ctx)
+      onChanged(); onClose()
+    } catch (e) {
+      setMutationError(e instanceof Error ? e.message : 'Could not update the invoice. Please try again.')
+    } finally {
+      setStatusBusy(null)
+    }
+  }
+
   return (
     <Modal open onClose={onClose} title={invoice.number ?? 'Invoice'} subtitle={`${clientName} · ${money(invoice.total_cents)}`} width={520}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -112,16 +157,17 @@ function InvoiceDetail({ invoice, clientName, ctx, onChanged, onClose }: { invoi
           <Stat label="Total" value={money(invoice.total_cents)} /><Stat label="Paid" value={money(invoice.amount_paid_cents)} /><Stat label="Status" value={invoice.status.replace('_', ' ')} />
         </div>
         {invoice.notes && <p style={{ fontSize: 13, color: 'var(--ink-2)' }}>{invoice.notes}</p>}
+        {mutationError && <AlertBanner variant="danger">{mutationError}</AlertBanner>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {invoice.status === 'draft' && <Button variant="primary" size="sm" onClick={() => B.setInvoiceStatus(invoice, 'sent', ctx).then(onChanged).then(onClose)}>Mark sent</Button>}
-          <Button variant="ghost" size="sm" onClick={() => B.setInvoiceStatus(invoice, 'void', ctx).then(onChanged).then(onClose)}>Void</Button>
+          {invoice.status === 'draft' && <Button variant="primary" size="sm" onClick={() => changeStatus('sent')} loading={statusBusy === 'sent'} disabled={statusBusy !== null}>Mark sent</Button>}
+          <Button variant="ghost" size="sm" onClick={() => changeStatus('void')} loading={statusBusy === 'void'} disabled={statusBusy !== null}>Void</Button>
         </div>
         <div style={{ borderTop: '1px solid var(--hairline-2)', paddingTop: 14 }}>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted)', marginBottom: 8 }}>Record payment (manual)</p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <div style={{ flex: 1 }}><Input label="Amount" value={payAmount} onChange={e => setPayAmount(e.target.value)} inputMode="decimal" /></div>
             <div style={{ width: 150 }}><Select label="Method" value={method} onChange={e => setMethod(e.target.value as PaymentMethod)} options={B.PAYMENT_METHODS} /></div>
-            <Button variant="primary" size="sm" onClick={pay} loading={busy} disabled={!payAmount}>Record</Button>
+            <Button variant="primary" size="sm" onClick={pay} loading={busy} disabled={!payAmount || busy}>Record</Button>
           </div>
         </div>
       </div>

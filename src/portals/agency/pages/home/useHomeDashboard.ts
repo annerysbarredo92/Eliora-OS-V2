@@ -45,11 +45,20 @@ export function useHomeDashboard() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
+  // True once data has ever loaded successfully. The tab-visibility
+  // refresh below re-runs `load()` on every return to the tab — before
+  // this, that unconditionally set `loading: true` again, which every KPI
+  // widget below reacts to by flashing back to its skeleton state on
+  // every ordinary tab switch. Only the very first load should show a
+  // loading state; a background refresh should update the numbers
+  // silently (same "loading only reflects 'no data has ever loaded'"
+  // convention already used by useClient/useClients).
+  const hasLoadedRef = useRef(false)
 
   const load = useCallback(async () => {
     const agencyId = profile?.agency_id
     if (!agencyId) return
-    setLoading(true)
+    if (!hasLoadedRef.current) setLoading(true)
     setError(null)
     try {
       const [invoices, content, tasks, events, requests, proposals, pipelineSummary, todaysBrief, monthlyRevenue] =
@@ -69,6 +78,7 @@ export function useHomeDashboard() {
         pipelineSummary, todaysBrief, monthlyRevenue,
         billingMetrics: computeBillingMetrics(invoices),
       })
+      hasLoadedRef.current = true
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load dashboard data')
     } finally {
